@@ -1,0 +1,29 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isValidAdAsset() {
+      return request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*|video/.*|application/zip|application/x-zip-compressed');
+    }
+
+    function isValidAvatar() {
+      return request.resource.size < 2 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    match /ads/{uid}/{fileName} {
+      allow read: if true;
+      allow write: if signedIn() && request.auth.uid == uid && isValidAdAsset();
+    }
+
+    match /avatars/{uid}/{fileName} {
+      allow read: if true;
+      allow write: if signedIn() && request.auth.uid == uid && isValidAvatar();
+    }
+  }
+}
