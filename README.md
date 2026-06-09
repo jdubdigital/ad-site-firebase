@@ -64,3 +64,7 @@ Available endpoints:
 - `GET /api/health` public health check
 - `GET /api/stats` public Firestore aggregate counts
 - `GET /api/me` authenticated account/profile state, requires a Firebase ID token bearer header
+- `POST /api/html5/extract` authenticated HTML5 ZIP extraction for an owned ad
+- `GET /api/html5/:adId/*` public sandbox preview assets for extracted HTML5 ads
+
+HTML5 ZIP uploads are stored in Firebase Storage, validated and extracted by the Node function, then rendered in the app with a sandboxed iframe.

@@ -430,6 +430,28 @@ video {
   height: auto;
 }
 
+.html5-frame-shell {
+  position: relative;
+  width: 100%;
+  min-height: 1px;
+  overflow: hidden;
+  background: #fff;
+  line-height: 0;
+}
+
+.html5-frame-shell iframe {
+  display: block;
+  border: 0;
+  background: #fff;
+  pointer-events: none;
+  transform-origin: top left;
+}
+
+.lightbox-creative.html5-frame-shell {
+  min-height: 0;
+  place-items: start;
+}
+
 .html5-preview {
   display: grid;
   min-height: 12rem;

@@ -140,9 +140,14 @@ export async function updateAd(adId, updates, file) {
     updatedAt: new Date().toISOString()
   };
 
-  await persistEditedAd(updated, file);
-  ads.update((items) => items.map((ad) => (ad.id === adId ? updated : ad)));
-  return updated;
+  const persisted = await persistEditedAd(updated, file);
+  const finalAd = {
+    ...updated,
+    ...(persisted || {})
+  };
+
+  ads.update((items) => items.map((ad) => (ad.id === adId ? finalAd : ad)));
+  return finalAd;
 }
 
 export async function deleteAd(adId) {

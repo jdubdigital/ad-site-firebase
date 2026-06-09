@@ -1,25 +1,71 @@
 <script>
+  import { onMount, tick } from 'svelte';
   import { getAdTypeLabel, getCreativeFallback } from '$lib/utils/ad-utils';
 
   export let ad;
   export let large = false;
 
+  let frameShell;
+  let frameScale = 1;
+
   $: src = ad.mediaUrl || getCreativeFallback(ad);
+  $: [creativeWidth, creativeHeight] = String(ad.size || '300x250')
+    .split('x')
+    .map((value) => Number(value) || 0);
+  $: intrinsicWidth = creativeWidth || 300;
+  $: intrinsicHeight = creativeHeight || 250;
+  $: shellHeight = Math.max(1, Math.round(intrinsicHeight * frameScale));
+  $: frameStyle = `width: ${intrinsicWidth}px; height: ${intrinsicHeight}px; transform: scale(${frameScale});`;
+  $: shellStyle = `height: ${shellHeight}px;`;
+
+  function resizeFrame() {
+    if (!frameShell) return;
+    const availableWidth = frameShell.clientWidth || intrinsicWidth;
+    const maxScale = large ? 2 : 1;
+    frameScale = Math.min(maxScale, availableWidth / intrinsicWidth);
+  }
+
+  $: if (ad?.htmlPreviewUrl) {
+    tick().then(resizeFrame);
+  }
+
+  onMount(() => {
+    resizeFrame();
+    if (!frameShell || typeof ResizeObserver === 'undefined') return undefined;
+
+    const observer = new ResizeObserver(resizeFrame);
+    observer.observe(frameShell);
+    return () => observer.disconnect();
+  });
 </script>
 
 {#if ad.type === 'html5'}
-  <div class:lightbox-creative={large} class="html5-preview">
-    <div class="html5-box">
-      <p class="eyebrow">{large ? 'HTML5 ZIP Package' : 'HTML5 ZIP'}</p>
-      <h3>{ad.title}</h3>
-      <p class="muted">{ad.mediaFileName || 'Packaged creative'} · {ad.size}</p>
-      {#if large}
-        <p class="muted">
-          In production, Firebase Storage can hold the ZIP while a backend validation step extracts and serves it in a sandboxed preview.
-        </p>
-      {/if}
+  {#if ad.htmlPreviewUrl}
+    <div bind:this={frameShell} class:lightbox-creative={large} class="html5-frame-shell" style={shellStyle}>
+      <iframe
+        src={ad.htmlPreviewUrl}
+        title={`${ad.title} HTML5 preview`}
+        sandbox="allow-scripts"
+        loading={large ? 'eager' : 'lazy'}
+        referrerpolicy="no-referrer"
+        tabindex="-1"
+        style={frameStyle}
+      ></iframe>
     </div>
-  </div>
+  {:else}
+    <div class:lightbox-creative={large} class="html5-preview">
+      <div class="html5-box">
+        <p class="eyebrow">{large ? 'HTML5 ZIP Package' : 'HTML5 ZIP'}</p>
+        <h3>{ad.title}</h3>
+        <p class="muted">{ad.mediaFileName || 'Packaged creative'} · {ad.size}</p>
+        {#if ad.htmlPreviewStatus === 'failed'}
+          <p class="muted">{ad.htmlPreviewError || 'The ZIP preview could not be extracted.'}</p>
+        {:else if large}
+          <p class="muted">Upload a new ZIP to extract and preview this package.</p>
+        {/if}
+      </div>
+    </div>
+  {/if}
 {:else if ad.type === 'video'}
   <video
     autoplay

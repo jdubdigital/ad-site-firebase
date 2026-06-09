@@ -47,11 +47,11 @@ export async function createSubmittedAd(adValues, file) {
 
 export async function persistEditedAd(ad, file) {
   if (isFirebaseConfigured && ad.source === 'firebase') {
-    await firebaseAds.persistEditedAd(ad, file);
-    return;
+    return firebaseAds.persistEditedAd(ad, file);
   }
 
   localAds.persistEditedAd(ad);
+  return ad;
 }
 
 export async function persistDeletedAd(ad) {

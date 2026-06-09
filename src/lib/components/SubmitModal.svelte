@@ -29,11 +29,13 @@
   let pendingMediaData = '';
   let pendingFileName = '';
   let status = '';
+  let submitting = false;
 
   $: editingAd = $submitEditingAdId ? $ads.find((ad) => ad.id === $submitEditingAdId) : null;
   $: isEditing = Boolean(editingAd);
   $: submitSize = size === 'custom' && customWidth && customHeight ? `${customWidth}x${customHeight}` : size;
   $: assetSummary = pendingFileName || mediaUrl.trim() || 'Demo placeholder until media is provided';
+  $: fileLimitLabel = isFirebaseConfigured ? 'Max 10 MB' : 'Max 2.5 MB for local browser storage';
 
   function setSizeValue(nextSize) {
     if (sizes.includes(nextSize)) {
@@ -131,6 +133,11 @@
     pendingFile = file;
     pendingFileName = file.name;
 
+    if (isZip) {
+      status = 'HTML5 ZIP selected. It will be extracted into a sandboxed preview after submit.';
+      return;
+    }
+
     const reader = new FileReader();
     reader.addEventListener('load', () => {
       pendingMediaData = String(reader.result || '');
@@ -141,6 +148,7 @@
   }
 
   async function submitForm() {
+    if (submitting) return;
     status = '';
 
     if (size === 'custom' && (!Number(customWidth) || !Number(customHeight))) {
@@ -155,9 +163,15 @@
     }
 
     const cleanedMediaUrl = cleanSubmittedValue(mediaUrl);
-    const hasZipAsset = pendingFileName.toLowerCase().endsWith('.zip') || cleanedMediaUrl.toLowerCase().endsWith('.zip');
+    const hasUploadedZip = pendingFileName.toLowerCase().endsWith('.zip');
+    const hasZipAsset = hasUploadedZip || cleanedMediaUrl.toLowerCase().endsWith('.zip');
     if (type === 'html5' && !hasZipAsset) {
       status = 'HTML5 submissions need a .zip upload or .zip media URL.';
+      return;
+    }
+
+    if (type === 'html5' && isFirebaseConfigured && !pendingFile && !editingAd?.mediaStoragePath) {
+      status = 'Upload the HTML5 ZIP file so the backend can extract it.';
       return;
     }
 
@@ -179,6 +193,11 @@
     };
 
     try {
+      submitting = true;
+      if (type === 'html5' && pendingFile) {
+        status = 'Uploading and extracting the HTML5 ZIP...';
+      }
+
       if (editingAd) {
         await updateAd(editingAd.id, adValues, pendingFile);
         status = 'Changes saved.';
@@ -195,6 +214,8 @@
       }, 900);
     } catch (error) {
       status = error?.message || 'The creative file is too large for browser storage. Try a smaller file or use a media URL.';
+    } finally {
+      submitting = false;
     }
   }
 
@@ -308,7 +329,7 @@
               <label class="dropzone">
                 <span class="dropzone-icon">+</span>
                 <strong>Upload image, GIF, video, or HTML5 ZIP</strong>
-                <span class="muted">{pendingFileName || 'Max 2.5 MB for the static prototype'}</span>
+                <span class="muted">{pendingFileName || fileLimitLabel}</span>
                 <input class="hidden-input" type="file" accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed" on:change={handleFile} />
               </label>
 
@@ -357,8 +378,12 @@
             <p class="status">{status}</p>
           {/if}
 
-          <button class="button button-primary" type="submit">{isEditing ? 'Save changes' : 'Submit ad'}</button>
-          <button class="button button-secondary" type="button" on:click={resetForm}>{isEditing ? 'Reset changes' : 'Reset form'}</button>
+          <button class="button button-primary" type="submit" disabled={submitting}>
+            {submitting ? 'Working...' : isEditing ? 'Save changes' : 'Submit ad'}
+          </button>
+          <button class="button button-secondary" type="button" disabled={submitting} on:click={resetForm}>
+            {isEditing ? 'Reset changes' : 'Reset form'}
+          </button>
         </aside>
       </form>
     </div>

@@ -12,18 +12,45 @@ async function stateRef() {
 }
 
 async function uploadAdAsset(file) {
-  if (!file) return '';
+  if (!file) return null;
 
   const services = await getFirebaseServices();
   const user = await getCurrentFirebaseUser();
-  if (!services || !user) return '';
+  if (!services || !user) return null;
   const { getDownloadURL, ref, uploadBytes } = services.storageApi;
 
-  const fileRef = ref(services.storage, `ads/${user.uid}/${Date.now()}-${safeFileName(file.name)}`);
+  const path = `ads/${user.uid}/${Date.now()}-${safeFileName(file.name)}`;
+  const fileRef = ref(services.storage, path);
   await uploadBytes(fileRef, file, {
     contentType: file.type || 'application/octet-stream'
   });
-  return getDownloadURL(fileRef);
+
+  return {
+    url: await getDownloadURL(fileRef),
+    path,
+    contentType: file.type || 'application/octet-stream'
+  };
+}
+
+async function requestHtml5Extraction(adId) {
+  const user = await getCurrentFirebaseUser();
+  if (!user) throw new Error('Sign in before extracting HTML5 ZIP previews.');
+
+  const response = await fetch('/api/html5/extract', {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${await user.getIdToken()}`,
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({ adId })
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(body.error || 'The HTML5 ZIP could not be extracted.');
+  }
+
+  return body;
 }
 
 function normalizeRemoteAd(id, data, likedIds) {
@@ -73,12 +100,14 @@ export async function createSubmittedAd(adValues, file) {
   const services = await getFirebaseServices();
   const user = await getCurrentFirebaseUser();
   if (!services || !user) throw new Error('Sign in before submitting ads.');
-  const { addDoc, collection, serverTimestamp } = services.firestoreApi;
+  const { addDoc, collection, deleteDoc, serverTimestamp } = services.firestoreApi;
 
-  const uploadedUrl = await uploadAdAsset(file);
+  const uploadedAsset = await uploadAdAsset(file);
   const ad = {
     ...adValues,
-    mediaUrl: uploadedUrl || adValues.mediaUrl || '',
+    mediaUrl: uploadedAsset?.url || adValues.mediaUrl || '',
+    mediaStoragePath: uploadedAsset?.path || adValues.mediaStoragePath || '',
+    mediaContentType: uploadedAsset?.contentType || adValues.mediaContentType || '',
     mediaFileName: file?.name || adValues.mediaFileName || '',
     likes: 0,
     ownerUid: user.uid,
@@ -88,8 +117,20 @@ export async function createSubmittedAd(adValues, file) {
   };
 
   const docRef = await addDoc(collection(services.db, 'ads'), ad);
+  let previewFields = {};
+
+  if (ad.type === 'html5' && ad.mediaStoragePath) {
+    try {
+      previewFields = await requestHtml5Extraction(docRef.id);
+    } catch (error) {
+      await deleteDoc(docRef).catch(() => {});
+      throw error;
+    }
+  }
+
   return {
     ...ad,
+    ...previewFields,
     id: docRef.id,
     liked: false
   };
@@ -100,15 +141,27 @@ export async function persistEditedAd(ad, file) {
   if (!services) return;
   const { doc, serverTimestamp, updateDoc } = services.firestoreApi;
 
-  const uploadedUrl = await uploadAdAsset(file);
+  const uploadedAsset = await uploadAdAsset(file);
   const updates = {
     ...ad,
-    mediaUrl: uploadedUrl || ad.mediaUrl || '',
+    mediaUrl: uploadedAsset?.url || ad.mediaUrl || '',
+    mediaStoragePath: uploadedAsset?.path || ad.mediaStoragePath || '',
+    mediaContentType: uploadedAsset?.contentType || ad.mediaContentType || '',
     mediaFileName: file?.name || ad.mediaFileName || '',
     updatedAt: serverTimestamp()
   };
 
   await updateDoc(doc(services.db, 'ads', String(ad.id)), updates);
+
+  if (updates.type === 'html5' && uploadedAsset?.path) {
+    const previewFields = await requestHtml5Extraction(String(ad.id));
+    return {
+      ...updates,
+      ...previewFields
+    };
+  }
+
+  return updates;
 }
 
 export async function persistDeletedAd(ad) {
