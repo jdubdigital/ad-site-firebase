@@ -4,6 +4,7 @@ import {
   getLikedAdIds,
   loadAds,
   persistAdLike,
+  persistDeletedAd,
   persistEditedAd,
   setLikedAdIds
 } from '$lib/repositories/ads';
@@ -142,4 +143,19 @@ export async function updateAd(adId, updates, file) {
   await persistEditedAd(updated, file);
   ads.update((items) => items.map((ad) => (ad.id === adId ? updated : ad)));
   return updated;
+}
+
+export async function deleteAd(adId) {
+  const existing = get(ads).find((ad) => ad.id === adId);
+  if (!existing) throw new Error('This ad could not be found.');
+
+  await persistDeletedAd(existing);
+
+  ads.update((items) => items.filter((ad) => ad.id !== adId));
+  selectedAdId.update((selectedId) => (selectedId === adId ? null : selectedId));
+
+  const likedIds = await getLikedAdIds();
+  if (likedIds.includes(adId)) {
+    await setLikedAdIds(likedIds.filter((id) => id !== adId));
+  }
 }

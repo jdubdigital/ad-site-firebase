@@ -264,6 +264,23 @@ video {
   color: var(--accent);
 }
 
+.button-danger {
+  border-color: color-mix(in srgb, #ef4444 55%, var(--border));
+  background: color-mix(in srgb, #ef4444 8%, var(--bg-soft));
+  color: #ef4444;
+}
+
+.button-danger:hover {
+  border-color: #ef4444;
+  background: color-mix(in srgb, #ef4444 14%, var(--bg-soft));
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+  transform: none;
+}
+
 .icon-button:hover,
 .theme-button:hover {
   transform: translateY(-1px);

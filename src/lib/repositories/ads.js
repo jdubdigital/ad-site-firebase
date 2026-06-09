@@ -54,6 +54,15 @@ export async function persistEditedAd(ad, file) {
   localAds.persistEditedAd(ad);
 }
 
+export async function persistDeletedAd(ad) {
+  if (isFirebaseConfigured && ad.source === 'firebase') {
+    await firebaseAds.persistDeletedAd(ad);
+    return;
+  }
+
+  localAds.persistDeletedAd(ad);
+}
+
 export async function persistAdLike(adId, liked) {
   if (isFirebaseConfigured) {
     await firebaseAds.persistAdLike(adId, liked);

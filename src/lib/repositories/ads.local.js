@@ -92,3 +92,14 @@ export function persistEditedAd(ad) {
     [ad.id]: ad
   });
 }
+
+export function persistDeletedAd(ad) {
+  setSubmittedAds(getSubmittedAds().filter((item) => item.id !== ad.id));
+  setLikedAdIds(getLikedAdIds().filter((id) => id !== ad.id));
+
+  const editedAds = getEditedAds();
+  if (editedAds[ad.id]) {
+    delete editedAds[ad.id];
+    setEditedAds(editedAds);
+  }
+}

@@ -1,7 +1,9 @@
 <script>
   import { goto } from '$app/navigation';
+  import Edit3 from '@lucide/svelte/icons/edit-3';
+  import Trash2 from '@lucide/svelte/icons/trash-2';
   import { signedInEmail } from '$lib/stores/account';
-  import { ads, openLightbox } from '$lib/stores/archive';
+  import { ads, deleteAd, openLightbox } from '$lib/stores/archive';
   import { favoriteUsers } from '$lib/stores/favorites';
   import { profile, saveProfile } from '$lib/stores/profile';
   import { openSubmit } from '$lib/stores/ui';
@@ -18,6 +20,8 @@
   let accountType = 'Brand';
   let description = '';
   let saveStatus = '';
+  let deleteStatus = '';
+  let deletingAdIds = new Set();
 
   $: currentProfile = $profile;
   $: myAds = $ads.filter((ad) => getAdUserSlug(ad) === currentProfile.userSlug);
@@ -76,6 +80,24 @@
     saveProfile({ avatarUrl: '' });
     saveStatus = 'Profile picture removed.';
     setTimeout(() => (saveStatus = ''), 1800);
+  }
+
+  async function handleDeleteAd(ad) {
+    const confirmed = window.confirm(`Delete "${ad.title}"? This will remove it from the archive.`);
+    if (!confirmed) return;
+
+    deleteStatus = '';
+    deletingAdIds = new Set([...deletingAdIds, ad.id]);
+
+    try {
+      await deleteAd(ad.id);
+      deleteStatus = 'Post deleted.';
+    } catch (error) {
+      deleteStatus = error?.message || 'Unable to delete this post.';
+    } finally {
+      deletingAdIds = new Set([...deletingAdIds].filter((id) => id !== ad.id));
+      setTimeout(() => (deleteStatus = ''), 2200);
+    }
   }
 
   $: if (currentProfile && !displayName) syncFields();
@@ -220,6 +242,9 @@
           <h3>Your posts</h3>
           <span class="muted">{myAds.length} published</span>
         </div>
+        {#if deleteStatus}
+          <p class="status">{deleteStatus}</p>
+        {/if}
         {#if myAds.length}
           {#each myAds as ad}
             <div class="dashboard-row">
@@ -229,7 +254,19 @@
               </div>
               <div class="row-actions">
                 <span class="muted">{ad.likes} likes</span>
-                <button class="button button-secondary" type="button" on:click={() => openSubmit(ad.id)}>Edit</button>
+                <button class="button button-secondary" type="button" on:click={() => openSubmit(ad.id)}>
+                  <Edit3 size={17} strokeWidth={2.25} aria-hidden="true" />
+                  Edit
+                </button>
+                <button
+                  class="button button-danger"
+                  type="button"
+                  disabled={deletingAdIds.has(ad.id)}
+                  on:click={() => handleDeleteAd(ad)}
+                >
+                  <Trash2 size={17} strokeWidth={2.25} aria-hidden="true" />
+                  {deletingAdIds.has(ad.id) ? 'Deleting' : 'Delete'}
+                </button>
                 <button class="button button-secondary" type="button" on:click={() => openLightbox(ad.id)}>Preview</button>
               </div>
             </div>

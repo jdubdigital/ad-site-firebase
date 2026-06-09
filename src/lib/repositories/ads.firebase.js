@@ -111,6 +111,15 @@ export async function persistEditedAd(ad, file) {
   await updateDoc(doc(services.db, 'ads', String(ad.id)), updates);
 }
 
+export async function persistDeletedAd(ad) {
+  const services = await getFirebaseServices();
+  const user = await getCurrentFirebaseUser();
+  if (!services || !user) throw new Error('Sign in before deleting posts.');
+  const { deleteDoc, doc } = services.firestoreApi;
+
+  await deleteDoc(doc(services.db, 'ads', String(ad.id)));
+}
+
 export async function persistAdLike(adId, liked) {
   const services = await getFirebaseServices();
   if (!services || typeof adId !== 'string') return;
