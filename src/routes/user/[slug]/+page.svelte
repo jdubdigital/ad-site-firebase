@@ -9,7 +9,10 @@
   import { profile } from '$lib/stores/profile';
   import { getAdChronology, getAdUserName, getAdUserSlug, getAdUserType, getUserBySlug, getUserInitials } from '$lib/utils/ad-utils';
 
-  export let data;
+  export let data = {
+    publicUser: null,
+    userAds: []
+  };
 
   let publicUser = null;
   let publicUserSlug = '';

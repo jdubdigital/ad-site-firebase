@@ -40,4 +40,15 @@ npm install
 npm run dev
 npm run check
 npm run build
+npm run deploy:hosting
+```
+
+## Firebase Hosting
+
+The app is configured as a static SvelteKit app for Firebase Hosting with a `200.html` SPA fallback, so deep links such as `/dashboard` and `/user/[slug]` resolve through the client router.
+
+Live Firebase Hosting URL:
+
+```text
+https://ad-archive-34f6c.web.app
 ```
