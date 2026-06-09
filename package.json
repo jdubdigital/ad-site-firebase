@@ -8,7 +8,9 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
     "check": "svelte-kit sync && svelte-check --tsconfig ./jsconfig.json",
-    "deploy:hosting": "npm run build && npx firebase-tools deploy --only hosting"
+    "deploy:hosting": "npm run build && npx firebase-tools deploy --only hosting",
+    "deploy:functions": "npm --prefix functions install && npx firebase-tools deploy --only functions",
+    "deploy:all": "npm run build && npm --prefix functions install && npx firebase-tools deploy"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.10",

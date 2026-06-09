@@ -41,6 +41,8 @@ npm run dev
 npm run check
 npm run build
 npm run deploy:hosting
+npm run deploy:functions
+npm run deploy:all
 ```
 
 ## Firebase Hosting
@@ -52,3 +54,13 @@ Live Firebase Hosting URL:
 ```text
 https://ad-archive-34f6c.web.app
 ```
+
+## Firebase Functions
+
+Node server-side code lives in `functions/` and is exposed through Firebase Hosting at `/api/**`.
+
+Available endpoints:
+
+- `GET /api/health` public health check
+- `GET /api/stats` public Firestore aggregate counts
+- `GET /api/me` authenticated account/profile state, requires a Firebase ID token bearer header
