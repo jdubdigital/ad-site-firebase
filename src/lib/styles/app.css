@@ -1055,6 +1055,35 @@ video {
     width: min(100% - 2rem, 80rem);
   }
 
+  .hero-inner {
+    min-height: clamp(17rem, 45svh, 20rem);
+    padding-block: 2rem;
+  }
+
+  .hero h1 {
+    max-width: 20rem;
+    font-size: 2rem;
+    line-height: 1.05;
+  }
+
+  .hero p {
+    max-width: 21rem;
+    margin-top: 0.75rem;
+    font-size: 0.94rem;
+    line-height: 1.45;
+  }
+
+  .hero-actions {
+    gap: 0.6rem;
+    margin-top: 1.2rem;
+  }
+
+  .hero-actions .button {
+    min-height: 2.45rem;
+    padding: 0.58rem 0.85rem;
+    font-size: 0.9rem;
+  }
+
   .masonry {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-auto-rows: 6px;
