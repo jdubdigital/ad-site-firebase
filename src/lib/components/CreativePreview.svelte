@@ -16,13 +16,17 @@
   $: intrinsicHeight = creativeHeight || 250;
   $: shellHeight = Math.max(1, Math.round(intrinsicHeight * frameScale));
   $: frameStyle = `width: ${intrinsicWidth}px; height: ${intrinsicHeight}px; transform: scale(${frameScale});`;
-  $: shellStyle = `height: ${shellHeight}px;`;
+  $: shellWidth = Math.max(1, Math.round(intrinsicWidth * frameScale));
+  $: shellStyle = large
+    ? `width: ${shellWidth}px; height: ${shellHeight}px;`
+    : `height: ${shellHeight}px;`;
 
   function resizeFrame() {
     if (!frameShell) return;
-    const availableWidth = frameShell.clientWidth || intrinsicWidth;
-    const maxScale = large ? 2 : 1;
-    frameScale = Math.min(maxScale, availableWidth / intrinsicWidth);
+    const availableWidth = large
+      ? frameShell.parentElement?.clientWidth || frameShell.clientWidth || intrinsicWidth
+      : frameShell.clientWidth || intrinsicWidth;
+    frameScale = Math.min(1, availableWidth / intrinsicWidth);
   }
 
   $: if (ad?.htmlPreviewUrl) {
@@ -41,7 +45,7 @@
 
 {#if ad.type === 'html5'}
   {#if ad.htmlPreviewUrl}
-    <div bind:this={frameShell} class:lightbox-creative={large} class="html5-frame-shell" style={shellStyle}>
+    <div bind:this={frameShell} class:html5-frame-large={large} class="html5-frame-shell" style={shellStyle}>
       <iframe
         src={ad.htmlPreviewUrl}
         title={`${ad.title} HTML5 preview`}

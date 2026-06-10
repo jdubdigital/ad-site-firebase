@@ -447,9 +447,8 @@ video {
   transform-origin: top left;
 }
 
-.lightbox-creative.html5-frame-shell {
-  min-height: 0;
-  place-items: start;
+.html5-frame-large {
+  max-width: 100%;
 }
 
 .html5-preview {
