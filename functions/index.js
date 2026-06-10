@@ -267,12 +267,175 @@ function previewContentHeaders(contentType) {
   const headers = {
     'cache-control': contentType.startsWith('text/html') ? 'no-cache' : 'public, max-age=3600',
     'content-security-policy':
-      "default-src 'self' data: blob:; script-src 'self' 'unsafe-inline' data: blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'none'; frame-ancestors 'self'",
+      "default-src https: data: blob:; script-src https: 'unsafe-inline' data: blob:; style-src https: 'unsafe-inline'; img-src https: data: blob:; font-src https: data:; media-src https: data: blob:; connect-src 'none'; frame-ancestors 'self'",
     'x-content-type-options': 'nosniff'
   };
 
   if (contentType) headers['content-type'] = contentType;
   return headers;
+}
+
+function html5PreviewBootstrap() {
+  return `<script>
+(function () {
+  if (window.Enabler && window.studio && window.studio.Enabler) return;
+
+  var listeners = {};
+  function event(name) {
+    return name;
+  }
+  function emit(name, detail) {
+    var callbacks = listeners[name] || [];
+    var customEvent;
+    try {
+      customEvent = new CustomEvent(name, { bubbles: true, cancelable: true, detail: detail || {} });
+    } catch (error) {
+      customEvent = document.createEvent('CustomEvent');
+      customEvent.initCustomEvent(name, true, true, detail || {});
+    }
+    callbacks.slice().forEach(function (callback) {
+      try {
+        callback(customEvent);
+      } catch (error) {
+        setTimeout(function () {
+          throw error;
+        });
+      }
+    });
+  }
+
+  window.studio = window.studio || {};
+  window.studio.events = window.studio.events || {};
+  window.studio.events.StudioEvent = window.studio.events.StudioEvent || {
+    INIT: event('init'),
+    VISIBLE: event('visible'),
+    PAGE_LOADED: event('pageLoaded'),
+    EXPAND_START: event('expandstart'),
+    EXPAND_FINISH: event('expandfinish'),
+    COLLAPSE_START: event('collapsestart'),
+    COLLAPSE_FINISH: event('collapsefinish'),
+    FULLSCREEN_EXPAND_START: event('fullscreenexpandstart'),
+    FULLSCREEN_EXPAND_FINISH: event('fullscreenexpandfinish'),
+    FULLSCREEN_COLLAPSE_START: event('fullscreencollapsestart'),
+    FULLSCREEN_COLLAPSE_FINISH: event('fullscreencollapsefinish'),
+    FULLSCREEN_DIMENSIONS: event('fullscreendimensions'),
+    FULLSCREEN_SUPPORT: event('fullscreensupport'),
+    HOSTPAGE_SCROLL: event('hostpagescroll')
+  };
+  window.studio.module = window.studio.module || { ModuleId: { GDN: 'gdn' } };
+  window.studio.sdk = window.studio.sdk || {};
+  window.studio.sdk.gdn = window.studio.sdk.gdn || {
+    getConfig: function () {
+      return {
+        isInCreativeToolsetContext: function () {
+          return false;
+        },
+        isInterstitial: function (callback) {
+          callback(false);
+        }
+      };
+    }
+  };
+  window.studio.video = window.studio.video || { Reporter: { attach: function () {}, detach: function () {} } };
+
+  var Enabler = {
+    addEventListener: function (name, callback) {
+      listeners[name] = listeners[name] || [];
+      listeners[name].push(callback);
+      if (name === window.studio.events.StudioEvent.INIT || name === window.studio.events.StudioEvent.VISIBLE || name === window.studio.events.StudioEvent.PAGE_LOADED) {
+        setTimeout(function () {
+          emit(name);
+        }, 0);
+      }
+    },
+    removeEventListener: function (name, callback) {
+      listeners[name] = (listeners[name] || []).filter(function (item) {
+        return item !== callback;
+      });
+    },
+    isInitialized: function () {
+      return true;
+    },
+    isVisible: function () {
+      return true;
+    },
+    isPageLoaded: function () {
+      return true;
+    },
+    isServingInLiveEnvironment: function () {
+      return false;
+    },
+    loadModule: function (_moduleId, callback) {
+      if (callback) setTimeout(callback, 0);
+    },
+    queryFullscreenSupport: function () {
+      setTimeout(function () {
+        emit(window.studio.events.StudioEvent.FULLSCREEN_SUPPORT, { supported: false });
+      }, 0);
+    },
+    exit: function () {},
+    exitOverride: function () {},
+    dynamicExit: function () {},
+    counter: function () {},
+    startTimer: function () {},
+    stopTimer: function () {},
+    reportManualClose: function () {},
+    requestExpand: function () {
+      emit(window.studio.events.StudioEvent.EXPAND_START);
+      emit(window.studio.events.StudioEvent.EXPAND_FINISH);
+    },
+    finishExpand: function () {},
+    requestCollapse: function () {
+      emit(window.studio.events.StudioEvent.COLLAPSE_START);
+      emit(window.studio.events.StudioEvent.COLLAPSE_FINISH);
+    },
+    finishCollapse: function () {},
+    requestFullscreenExpand: function () {
+      emit(window.studio.events.StudioEvent.FULLSCREEN_EXPAND_START);
+      emit(window.studio.events.StudioEvent.FULLSCREEN_EXPAND_FINISH);
+    },
+    finishFullscreenExpand: function () {},
+    requestFullscreenCollapse: function () {
+      emit(window.studio.events.StudioEvent.FULLSCREEN_COLLAPSE_START);
+      emit(window.studio.events.StudioEvent.FULLSCREEN_COLLAPSE_FINISH);
+    },
+    finishFullscreenCollapse: function () {},
+    setResponsiveExpanding: function () {},
+    setResponsiveSize: function () {},
+    setRushSimulatedLocalEvents: function () {}
+  };
+
+  window.Enabler = window.Enabler || Enabler;
+  window.studio.Enabler = window.studio.Enabler || window.Enabler;
+
+  function wakeCreative() {
+    if (document.body) document.body.style.opacity = '';
+    window.dispatchEvent(new Event('WebComponentsReady'));
+    window.dispatchEvent(new Event('adinitialized'));
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      setTimeout(wakeCreative, 0);
+    });
+  } else {
+    setTimeout(wakeCreative, 0);
+  }
+  setTimeout(wakeCreative, 80);
+})();
+</script>`;
+}
+
+function prepareHtmlPreview(buffer, contentType) {
+  if (!contentType.startsWith('text/html')) return buffer;
+
+  const html = buffer.toString('utf8');
+  const bootstrap = html5PreviewBootstrap();
+  if (html.includes('data-ad-archive-html5-preview-shim')) return buffer;
+
+  const script = bootstrap.replace('<script>', '<script data-ad-archive-html5-preview-shim>');
+  if (/<head[^>]*>/i.test(html)) return Buffer.from(html.replace(/<head[^>]*>/i, (match) => `${match}${script}`));
+  return Buffer.from(`${script}${html}`);
 }
 
 async function handleHtml5Preview(path, res) {
@@ -302,7 +465,7 @@ async function handleHtml5Preview(path, res) {
   const [buffer] = await file.download();
   const contentType = metadata.contentType || html5MimeTypes[extensionForPath(requestedPath)] || 'application/octet-stream';
 
-  res.status(200).set(previewContentHeaders(contentType)).send(buffer);
+  res.status(200).set(previewContentHeaders(contentType)).send(prepareHtmlPreview(buffer, contentType));
 }
 
 exports.api = onRequest(async (req, res) => {
