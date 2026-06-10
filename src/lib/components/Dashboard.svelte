@@ -252,7 +252,7 @@
                 <strong>{ad.title}</strong>
                 <p class="muted">{ad.category} · {ad.medium || 'Web'} · {ad.tags} · {ad.size} · {getAdTypeLabel(ad.type)}</p>
               </div>
-              <div class="row-actions">
+              <div class="row-actions post-actions">
                 <span class="muted">{ad.likes} likes</span>
                 <button class="button button-secondary" type="button" on:click={() => openSubmit(ad.id)}>
                   <Edit3 size={17} strokeWidth={2.25} aria-hidden="true" />
