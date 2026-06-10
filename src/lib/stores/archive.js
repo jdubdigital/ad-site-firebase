@@ -23,7 +23,7 @@ export const activeFilters = writable({
 });
 export const sortMode = writable('newest');
 export const visibleCount = writable(batchSize);
-export const selectedAdId = writable(null);
+export const adsReady = writable(!isFirebaseConfigured);
 
 export const filteredAds = derived([ads, activeFilters, sortMode], ([$ads, $activeFilters, $sortMode]) => {
   const query = $activeFilters.query.toLowerCase();
@@ -48,12 +48,13 @@ export const visibleAds = derived([filteredAds, visibleCount], ([$filteredAds, $
   $filteredAds.slice(0, $visibleCount)
 );
 
-export const selectedAd = derived([ads, selectedAdId], ([$ads, $selectedAdId]) =>
-  $ads.find((ad) => ad.id === $selectedAdId) || null
-);
-
 export async function hydrateAds() {
-  ads.set(await loadAds());
+  adsReady.set(false);
+  try {
+    ads.set(await loadAds());
+  } finally {
+    adsReady.set(true);
+  }
 }
 
 export function resetVisibleAds() {
@@ -87,14 +88,6 @@ export function clearFilters() {
 export function setSortMode(mode) {
   sortMode.set(mode);
   resetVisibleAds();
-}
-
-export function openLightbox(adId) {
-  selectedAdId.set(adId);
-}
-
-export function closeLightbox() {
-  selectedAdId.set(null);
 }
 
 export async function toggleAdLike(adId) {
@@ -157,7 +150,6 @@ export async function deleteAd(adId) {
   await persistDeletedAd(existing);
 
   ads.update((items) => items.filter((ad) => ad.id !== adId));
-  selectedAdId.update((selectedId) => (selectedId === adId ? null : selectedId));
 
   const likedIds = await getLikedAdIds();
   if (likedIds.includes(adId)) {

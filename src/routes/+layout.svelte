@@ -3,7 +3,6 @@
   import '$lib/styles/app.css';
   import FilterPanel from '$lib/components/FilterPanel.svelte';
   import Header from '$lib/components/Header.svelte';
-  import Lightbox from '$lib/components/Lightbox.svelte';
   import LoginModal from '$lib/components/LoginModal.svelte';
   import SubmitModal from '$lib/components/SubmitModal.svelte';
   import { initializeAccount } from '$lib/stores/account';
@@ -37,5 +36,4 @@
   </footer>
   <LoginModal />
   <SubmitModal />
-  <Lightbox />
 </div>

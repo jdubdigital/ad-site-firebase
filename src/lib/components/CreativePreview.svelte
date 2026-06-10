@@ -57,7 +57,7 @@
       ></iframe>
     </div>
   {:else}
-    <div class:lightbox-creative={large} class="html5-preview">
+    <div class:large-creative-preview={large} class="html5-preview">
       <div class="html5-box">
         <p class="eyebrow">{large ? 'HTML5 ZIP Package' : 'HTML5 ZIP'}</p>
         <h3>{ad.title}</h3>

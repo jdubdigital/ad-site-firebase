@@ -3,7 +3,7 @@
   import Edit3 from '@lucide/svelte/icons/edit-3';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import { signedInEmail } from '$lib/stores/account';
-  import { ads, deleteAd, openLightbox } from '$lib/stores/archive';
+  import { ads, deleteAd } from '$lib/stores/archive';
   import { favoriteUsers } from '$lib/stores/favorites';
   import { profile, saveProfile } from '$lib/stores/profile';
   import { openSubmit } from '$lib/stores/ui';
@@ -98,6 +98,10 @@
       deletingAdIds = new Set([...deletingAdIds].filter((id) => id !== ad.id));
       setTimeout(() => (deleteStatus = ''), 2200);
     }
+  }
+
+  function openAdPage(ad) {
+    goto(`/ad/${encodeURIComponent(String(ad.id))}`);
   }
 
   $: if (currentProfile && !displayName) syncFields();
@@ -227,7 +231,7 @@
                 </div>
                 <div class="row-actions">
                   <button class="button button-secondary" type="button" on:click={() => goto(`/user/${getAdUserSlug(ad)}`)}>User</button>
-                  <button class="button button-secondary" type="button" on:click={() => openLightbox(ad.id)}>Preview</button>
+                  <button class="button button-secondary" type="button" on:click={() => openAdPage(ad)}>View</button>
                 </div>
               </div>
             {/each}
@@ -267,7 +271,7 @@
                   <Trash2 size={17} strokeWidth={2.25} aria-hidden="true" />
                   {deletingAdIds.has(ad.id) ? 'Deleting' : 'Delete'}
                 </button>
-                <button class="button button-secondary" type="button" on:click={() => openLightbox(ad.id)}>Preview</button>
+                <button class="button button-secondary" type="button" on:click={() => openAdPage(ad)}>View</button>
               </div>
             </div>
           {/each}
