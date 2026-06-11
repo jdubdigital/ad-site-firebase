@@ -494,6 +494,17 @@ video {
   transform: translateY(-2px);
 }
 
+.ad-card:has(.creative-media-shell.is-dormant) {
+  border-color: transparent;
+  background: transparent;
+}
+
+.ad-card:has(.creative-media-shell.is-dormant):hover {
+  border-color: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
 .creative-button {
   display: block;
   width: 100%;
@@ -516,6 +527,10 @@ video {
   line-height: 0;
 }
 
+.creative-preview:has(.creative-media-shell.is-dormant) {
+  background: transparent;
+}
+
 .creative-media-shell {
   position: relative;
   width: 100%;
@@ -523,6 +538,11 @@ video {
   overflow: hidden;
   background: color-mix(in srgb, var(--accent) 8%, var(--bg-muted));
   line-height: 0;
+}
+
+.creative-media-shell.is-dormant {
+  visibility: hidden;
+  background: transparent;
 }
 
 .creative-preview img,

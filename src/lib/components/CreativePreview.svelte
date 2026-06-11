@@ -117,6 +117,7 @@
       bind:this={frameShell}
       class:html5-frame-large={large}
       class="html5-frame-shell creative-media-shell"
+      class:is-dormant={!mediaActive && !large}
       class:is-ready={mediaReady}
       use:observeMediaWindow
       style={shellStyle}
@@ -157,6 +158,7 @@
 {:else if ad.type === 'video'}
   <div
     class="creative-media-shell"
+    class:is-dormant={!mediaActive && !large}
     class:is-large={large}
     class:is-ready={mediaReady}
     use:observeMediaWindow
@@ -188,6 +190,7 @@
 {:else}
   <div
     class="creative-media-shell"
+    class:is-dormant={!mediaActive && !large}
     class:is-large={large}
     class:is-ready={mediaReady}
     use:observeMediaWindow
