@@ -1,12 +1,14 @@
 <script>
   import { browser } from '$app/environment';
   import { onMount } from 'svelte';
-  import { adTypes, extraCategories, mediums, primaryCategories } from '$lib/data/catalog';
+  import Search from '@lucide/svelte/icons/search';
+  import { extraCategories, mediums, primaryCategories } from '$lib/data/catalog';
+  import FormatChips from './FormatChips.svelte';
   import { activeFilters, clearFilters, setFilter, setSearchQuery } from '$lib/stores/archive';
   import { closeFilters, filtersOpen } from '$lib/stores/ui';
 
   let showAllCategories = false;
-  let mobileSearchInput;
+  let searchInput;
 
   $: visibleCategories = showAllCategories ? [...primaryCategories, ...extraCategories] : primaryCategories;
 
@@ -19,8 +21,8 @@
     return () => document.removeEventListener('keydown', onKeydown);
   });
 
-  $: if (browser && $filtersOpen && mobileSearchInput && window.innerWidth < 768) {
-    setTimeout(() => mobileSearchInput?.focus(), 50);
+  $: if (browser && $filtersOpen && searchInput) {
+    setTimeout(() => searchInput?.focus(), 50);
   }
 </script>
 
@@ -37,15 +39,18 @@
         <button class="icon-button" type="button" aria-label="Close search menu" on:click={closeFilters}>×</button>
       </div>
 
-      <div class="mobile-only" style="margin-top: 1rem;">
-        <input
-          bind:this={mobileSearchInput}
-          class="field"
-          type="search"
-          placeholder="Search ads..."
-          value={$activeFilters.query}
-          on:input={(event) => setSearchQuery(event.currentTarget.value)}
-        />
+      <div class="filter-search">
+        <div class="search-wrap">
+          <Search class="search-icon" size={19} strokeWidth={2.25} aria-hidden="true" />
+          <input
+            bind:this={searchInput}
+            class="search-input"
+            type="search"
+            placeholder="Search ads, brands, categories..."
+            value={$activeFilters.query}
+            on:input={(event) => setSearchQuery(event.currentTarget.value)}
+          />
+        </div>
       </div>
 
       <div class="filter-grid">
@@ -90,14 +95,7 @@
 
         <section>
           <p class="section-label">Format</p>
-          <div class="chip-list">
-            <button class="chip" type="button" aria-pressed={$activeFilters.type === 'all'} on:click={() => setFilter('type', 'all')}>All</button>
-            {#each adTypes as type}
-              <button class="chip" type="button" aria-pressed={$activeFilters.type === type.value} on:click={() => setFilter('type', type.value)}>
-                {type.label}
-              </button>
-            {/each}
-          </div>
+          <FormatChips />
         </section>
       </div>
 

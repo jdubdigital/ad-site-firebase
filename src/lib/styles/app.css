@@ -201,12 +201,6 @@ video {
   color: var(--text);
 }
 
-.desktop-search {
-  display: none;
-  flex: 1;
-  max-width: 38rem;
-}
-
 .search-wrap {
   position: relative;
   width: 100%;
@@ -308,6 +302,10 @@ video {
   display: none;
   align-items: center;
   gap: 0.5rem;
+}
+
+.search-trigger {
+  flex: 0 0 auto;
 }
 
 .button {
@@ -424,6 +422,25 @@ video {
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.toolbar-formats {
+  display: none;
+  min-width: 0;
+  flex: 1 1 auto;
+  justify-content: center;
+}
+
+.toolbar-formats .format-chip-list {
+  flex-wrap: nowrap;
+  justify-content: center;
+  overflow-x: auto;
+  padding-bottom: 0.1rem;
+}
+
+.toolbar-formats .chip {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.82rem;
 }
 
 .muted {
@@ -767,6 +784,10 @@ video {
   justify-content: space-between;
   gap: 0.75rem;
   margin-top: 1.25rem;
+}
+
+.filter-search {
+  margin-top: 1rem;
 }
 
 .modal-overlay {
@@ -1302,8 +1323,11 @@ video {
 }
 
 @media (min-width: 768px) {
-  .desktop-search,
   .nav-links {
+    display: flex;
+  }
+
+  .toolbar-formats {
     display: flex;
   }
 
@@ -1619,6 +1643,16 @@ video {
   .icon-button {
     width: 2.35rem;
     height: 2.35rem;
+  }
+
+  .search-trigger {
+    width: 2.35rem;
+    min-height: 2.35rem;
+    padding: 0;
+  }
+
+  .search-trigger span {
+    display: none;
   }
 
   .toolbar-inner,

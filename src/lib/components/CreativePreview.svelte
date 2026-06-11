@@ -144,9 +144,9 @@
   {:else}
     <div class:large-creative-preview={large} class="html5-preview">
       <div class="html5-box">
-        <p class="eyebrow">{large ? 'HTML5 ZIP Package' : 'HTML5 ZIP'}</p>
+        <p class="eyebrow">{large ? 'HTML5 Package' : 'HTML5'}</p>
         <h3>{ad.title}</h3>
-        <p class="muted">{ad.mediaFileName || 'Packaged creative'} · {ad.size}</p>
+        <p class="muted">Packaged creative · {ad.size}</p>
         {#if ad.htmlPreviewStatus === 'failed'}
           <p class="muted">{ad.htmlPreviewError || 'The ZIP preview could not be extracted.'}</p>
         {:else if large}

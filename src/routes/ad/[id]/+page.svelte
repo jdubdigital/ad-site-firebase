@@ -15,8 +15,7 @@
         ['Medium', ad.medium || 'Web'],
         ['Format', getAdTypeLabel(ad.type)],
         ['Size', ad.size],
-        ['Tags', ad.tags],
-        ['File', ad.mediaFileName]
+        ['Tags', ad.tags]
       ].filter(([, value]) => value)
     : [];
 </script>

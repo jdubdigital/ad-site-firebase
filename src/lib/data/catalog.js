@@ -50,7 +50,7 @@ export const adTypes = [
   { value: 'image', label: 'Image' },
   { value: 'gif', label: 'GIF' },
   { value: 'video', label: 'Video' },
-  { value: 'html5', label: 'HTML5 ZIP' }
+  { value: 'html5', label: 'HTML5' }
 ];
 
 export const users = [

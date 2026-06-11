@@ -1,5 +1,6 @@
 <script>
   import { filteredAds, setSortMode, sortMode, visibleAds } from '$lib/stores/archive';
+  import FormatChips from './FormatChips.svelte';
 </script>
 
 <section class="toolbar">
@@ -8,6 +9,10 @@
       <p class="muted">
         Showing {Math.min($visibleAds.length, $filteredAds.length)} of {$filteredAds.length} ads
       </p>
+    </div>
+
+    <div class="toolbar-formats" aria-label="Filter by format">
+      <FormatChips />
     </div>
 
     <label class="sort-control" aria-label="Sort ads">

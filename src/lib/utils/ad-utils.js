@@ -15,7 +15,7 @@ export function getAdChronology(ad) {
 
 export function getAdTypeLabel(type) {
   if (type === 'gif') return 'GIF';
-  if (type === 'html5') return 'HTML5 ZIP';
+  if (type === 'html5') return 'HTML5';
   return type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Image';
 }
 

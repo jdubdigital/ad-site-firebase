@@ -6,7 +6,6 @@
   import Search from '@lucide/svelte/icons/search';
   import Sun from '@lucide/svelte/icons/sun';
   import { signedInEmail } from '$lib/stores/account';
-  import { activeFilters, setSearchQuery } from '$lib/stores/archive';
   import { openFilters, openLogin } from '$lib/stores/ui';
   import { setThemeMode, themeMode } from '$lib/stores/theme';
 </script>
@@ -16,20 +15,6 @@
     <a class="brand" href="/" aria-label="Ad Archive home">
       <span class="brand-gradient">Ad</span><span class="brand-dark">Archive</span>
     </a>
-
-    <div class="desktop-search">
-      <div class="search-wrap">
-        <Search class="search-icon" size={19} strokeWidth={2.25} aria-hidden="true" />
-        <input
-          class="search-input"
-          type="search"
-          placeholder="Search ads, brands, categories..."
-          value={$activeFilters.query}
-          on:focus={openFilters}
-          on:input={(event) => setSearchQuery(event.currentTarget.value)}
-        />
-      </div>
-    </div>
 
     <nav class="nav" aria-label="Main navigation">
       <div class="nav-links">
@@ -93,8 +78,9 @@
         <CircleUserRound size={21} strokeWidth={2.15} aria-hidden="true" />
       </button>
 
-      <button class="icon-button mobile-only" type="button" aria-label="Open search" on:click={openFilters}>
-        <Search size={21} strokeWidth={2.15} aria-hidden="true" />
+      <button class="button button-secondary search-trigger" type="button" aria-label="Open search" on:click={openFilters}>
+        <Search size={18} strokeWidth={2.25} aria-hidden="true" />
+        <span>Search</span>
       </button>
     </nav>
   </div>
