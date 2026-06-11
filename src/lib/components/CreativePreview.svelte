@@ -27,7 +27,7 @@
   $: shellStyle = large
     ? `width: ${shellWidth}px; height: ${shellHeight}px;`
     : `height: ${shellHeight}px;`;
-  $: mediaShellStyle = large ? '' : `aspect-ratio: ${intrinsicWidth} / ${intrinsicHeight};`;
+  $: mediaShellStyle = !large && !mediaActive ? `aspect-ratio: ${intrinsicWidth} / ${intrinsicHeight};` : '';
   $: nextMediaKey = `${ad.id}-${ad.type}-${src}-${ad.htmlPreviewUrl || ''}-${large}`;
   $: if (nextMediaKey !== mediaKey) {
     mediaKey = nextMediaKey;
