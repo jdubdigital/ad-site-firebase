@@ -38,7 +38,6 @@
       html,
       body {
         background: transparent !important;
-        overflow: hidden;
       }
     </style>
   {/if}
