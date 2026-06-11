@@ -13,6 +13,7 @@ import { isFirebaseConfigured } from '$lib/firebase/client';
 import { getAdArea, getAdChronology, getAdSearchText } from '$lib/utils/ad-utils';
 
 const batchSize = 12;
+let hydrationRun = 0;
 
 export const ads = writable(isFirebaseConfigured ? [] : createMockAds());
 export const activeFilters = writable({
@@ -49,11 +50,13 @@ export const visibleAds = derived([filteredAds, visibleCount], ([$filteredAds, $
 );
 
 export async function hydrateAds() {
+  const run = ++hydrationRun;
   adsReady.set(false);
   try {
-    ads.set(await loadAds());
+    const loadedAds = await loadAds();
+    if (run === hydrationRun) ads.set(loadedAds);
   } finally {
-    adsReady.set(true);
+    if (run === hydrationRun) adsReady.set(true);
   }
 }
 
@@ -116,14 +119,14 @@ export async function toggleAdLike(adId) {
   persistAdLike(adId, nextLiked).catch(() => {});
 }
 
-export async function submitAd(adValues, file) {
-  const ad = await createSubmittedAd(adValues, file);
+export async function submitAd(adValues, file, options = {}) {
+  const ad = await createSubmittedAd(adValues, file, options);
   ads.update((items) => [ad, ...items]);
   resetVisibleAds();
   return ad;
 }
 
-export async function updateAd(adId, updates, file) {
+export async function updateAd(adId, updates, file, options = {}) {
   const existing = get(ads).find((ad) => ad.id === adId);
   if (!existing) throw new Error('This ad could not be found.');
 
@@ -133,7 +136,7 @@ export async function updateAd(adId, updates, file) {
     updatedAt: new Date().toISOString()
   };
 
-  const persisted = await persistEditedAd(updated, file);
+  const persisted = await persistEditedAd(updated, file, options);
   const finalAd = {
     ...updated,
     ...(persisted || {})

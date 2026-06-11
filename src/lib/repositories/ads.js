@@ -37,20 +37,20 @@ export async function setLikedAdIds(ids) {
   localAds.setLikedAdIds(ids);
 }
 
-export async function createSubmittedAd(adValues, file) {
+export async function createSubmittedAd(adValues, file, options = {}) {
   if (isFirebaseConfigured) {
-    return firebaseAds.createSubmittedAd(adValues, file);
+    return firebaseAds.createSubmittedAd(adValues, file, options);
   }
 
-  return localAds.createSubmittedAd(adValues);
+  return localAds.createSubmittedAd(adValues, options);
 }
 
-export async function persistEditedAd(ad, file) {
+export async function persistEditedAd(ad, file, options = {}) {
   if (isFirebaseConfigured && ad.source === 'firebase') {
-    return firebaseAds.persistEditedAd(ad, file);
+    return firebaseAds.persistEditedAd(ad, file, options);
   }
 
-  localAds.persistEditedAd(ad);
+  localAds.persistEditedAd(ad, options);
   return ad;
 }
 

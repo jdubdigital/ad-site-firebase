@@ -11,19 +11,38 @@ async function stateRef() {
   };
 }
 
-async function uploadAdAsset(file) {
+async function uploadAdAsset(file, onProgress) {
   if (!file) return null;
 
   const services = await getFirebaseServices();
   const user = await getCurrentFirebaseUser();
   if (!services || !user) return null;
-  const { getDownloadURL, ref, uploadBytes } = services.storageApi;
+  const { getDownloadURL, ref, uploadBytes, uploadBytesResumable } = services.storageApi;
 
   const path = `ads/${user.uid}/${Date.now()}-${safeFileName(file.name)}`;
   const fileRef = ref(services.storage, path);
-  await uploadBytes(fileRef, file, {
+  const metadata = {
     contentType: file.type || 'application/octet-stream'
-  });
+  };
+
+  if (uploadBytesResumable) {
+    await new Promise((resolve, reject) => {
+      const uploadTask = uploadBytesResumable(fileRef, file, metadata);
+      uploadTask.on(
+        'state_changed',
+        (snapshot) => {
+          const progress = snapshot.totalBytes ? snapshot.bytesTransferred / snapshot.totalBytes : 0;
+          onProgress?.({ stage: 'upload', progress });
+        },
+        reject,
+        resolve
+      );
+    });
+  } else {
+    onProgress?.({ stage: 'upload', progress: 0.15 });
+    await uploadBytes(fileRef, file, metadata);
+    onProgress?.({ stage: 'upload', progress: 1 });
+  }
 
   return {
     url: await getDownloadURL(fileRef),
@@ -32,9 +51,11 @@ async function uploadAdAsset(file) {
   };
 }
 
-async function requestHtml5Extraction(adId) {
+async function requestHtml5Extraction(adId, onProgress) {
   const user = await getCurrentFirebaseUser();
   if (!user) throw new Error('Sign in before extracting HTML5 ZIP previews.');
+
+  onProgress?.({ stage: 'extract', progress: 0.2 });
 
   const response = await fetch('/api/html5/extract', {
     method: 'POST',
@@ -50,6 +71,7 @@ async function requestHtml5Extraction(adId) {
     throw new Error(body.error || 'The HTML5 ZIP could not be extracted.');
   }
 
+  onProgress?.({ stage: 'extract', progress: 1 });
   return body;
 }
 
@@ -96,13 +118,16 @@ export async function loadAds(likedIdsOverride = null) {
   return snapshot.docs.map((adDoc) => normalizeRemoteAd(adDoc.id, adDoc.data(), likedIds));
 }
 
-export async function createSubmittedAd(adValues, file) {
+export async function createSubmittedAd(adValues, file, options = {}) {
   const services = await getFirebaseServices();
   const user = await getCurrentFirebaseUser();
   if (!services || !user) throw new Error('Sign in before submitting ads.');
   const { addDoc, collection, deleteDoc, serverTimestamp } = services.firestoreApi;
 
-  const uploadedAsset = await uploadAdAsset(file);
+  options.onProgress?.({ stage: 'prepare', progress: 0.2 });
+  const uploadedAsset = await uploadAdAsset(file, options.onProgress);
+  options.onProgress?.({ stage: 'save', progress: 0.35 });
+
   const ad = {
     ...adValues,
     mediaUrl: uploadedAsset?.url || adValues.mediaUrl || '',
@@ -117,11 +142,12 @@ export async function createSubmittedAd(adValues, file) {
   };
 
   const docRef = await addDoc(collection(services.db, 'ads'), ad);
+  options.onProgress?.({ stage: 'save', progress: 1 });
   let previewFields = {};
 
   if (ad.type === 'html5' && ad.mediaStoragePath) {
     try {
-      previewFields = await requestHtml5Extraction(docRef.id);
+      previewFields = await requestHtml5Extraction(docRef.id, options.onProgress);
     } catch (error) {
       await deleteDoc(docRef).catch(() => {});
       throw error;
@@ -136,12 +162,15 @@ export async function createSubmittedAd(adValues, file) {
   };
 }
 
-export async function persistEditedAd(ad, file) {
+export async function persistEditedAd(ad, file, options = {}) {
   const services = await getFirebaseServices();
   if (!services) return;
   const { doc, serverTimestamp, updateDoc } = services.firestoreApi;
 
-  const uploadedAsset = await uploadAdAsset(file);
+  options.onProgress?.({ stage: 'prepare', progress: 0.2 });
+  const uploadedAsset = await uploadAdAsset(file, options.onProgress);
+  options.onProgress?.({ stage: 'save', progress: 0.35 });
+
   const updates = {
     ...ad,
     mediaUrl: uploadedAsset?.url || ad.mediaUrl || '',
@@ -152,9 +181,10 @@ export async function persistEditedAd(ad, file) {
   };
 
   await updateDoc(doc(services.db, 'ads', String(ad.id)), updates);
+  options.onProgress?.({ stage: 'save', progress: 1 });
 
   if (updates.type === 'html5' && uploadedAsset?.path) {
-    const previewFields = await requestHtml5Extraction(String(ad.id));
+    const previewFields = await requestHtml5Extraction(String(ad.id), options.onProgress);
     return {
       ...updates,
       ...previewFields

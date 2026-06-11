@@ -65,7 +65,9 @@ export function loadAds() {
   }));
 }
 
-export function createSubmittedAd(adValues) {
+export function createSubmittedAd(adValues, options = {}) {
+  options.onProgress?.({ stage: 'save', progress: 0.35 });
+
   const ad = {
     id: Date.now(),
     ...adValues,
@@ -75,10 +77,13 @@ export function createSubmittedAd(adValues) {
   };
 
   setSubmittedAds([ad, ...getSubmittedAds()]);
+  options.onProgress?.({ stage: 'done', progress: 1 });
   return ad;
 }
 
-export function persistEditedAd(ad) {
+export function persistEditedAd(ad, options = {}) {
+  options.onProgress?.({ stage: 'save', progress: 0.35 });
+
   const submittedAds = getSubmittedAds();
   const submittedIndex = submittedAds.findIndex((item) => item.id === ad.id);
 
@@ -91,6 +96,8 @@ export function persistEditedAd(ad) {
     ...getEditedAds(),
     [ad.id]: ad
   });
+
+  options.onProgress?.({ stage: 'done', progress: 1 });
 }
 
 export function persistDeletedAd(ad) {

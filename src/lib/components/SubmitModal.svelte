@@ -30,6 +30,8 @@
   let pendingFileName = '';
   let status = '';
   let submitting = false;
+  let submitProgress = 0;
+  let submitPhase = '';
 
   $: editingAd = $submitEditingAdId ? $ads.find((ad) => ad.id === $submitEditingAdId) : null;
   $: isEditing = Boolean(editingAd);
@@ -92,9 +94,12 @@
     pendingFile = null;
     pendingFileName = '';
     status = '';
+    submitProgress = 0;
+    submitPhase = '';
   }
 
   function handleClose() {
+    if (submitting) return;
     closeSubmit();
     if ($page.url.pathname === '/submit') goto('/');
   }
@@ -150,6 +155,8 @@
   async function submitForm() {
     if (submitting) return;
     status = '';
+    submitProgress = 0;
+    submitPhase = '';
 
     if (size === 'custom' && (!Number(customWidth) || !Number(customHeight))) {
       status = 'Enter a custom width and height.';
@@ -192,20 +199,46 @@
       type
     };
 
+    function handleSubmitProgress(event) {
+      const progress = Math.max(0, Math.min(1, Number(event?.progress) || 0));
+      const ranges = {
+        prepare: [6, 16],
+        upload: [16, 68],
+        save: [68, 84],
+        extract: [84, 96],
+        done: [100, 100]
+      };
+      const labels = {
+        prepare: 'Preparing creative',
+        upload: 'Uploading asset',
+        save: 'Saving ad details',
+        extract: 'Extracting HTML5 preview',
+        done: 'Done'
+      };
+      const stage = event?.stage || 'prepare';
+      const [start, end] = ranges[stage] || ranges.prepare;
+
+      submitProgress = Math.round(start + (end - start) * progress);
+      submitPhase = event?.message || labels[stage] || 'Working';
+    }
+
     try {
       submitting = true;
+      handleSubmitProgress({ stage: 'prepare', progress: 0.2 });
       if (type === 'html5' && pendingFile) {
         status = 'Uploading and extracting the HTML5 ZIP...';
       }
 
       if (editingAd) {
-        await updateAd(editingAd.id, adValues, pendingFile);
+        await updateAd(editingAd.id, adValues, pendingFile, { onProgress: handleSubmitProgress });
+        handleSubmitProgress({ stage: 'done', progress: 1 });
         status = 'Changes saved.';
         setTimeout(handleClose, 700);
         return;
       }
 
-      await submitAd(adValues, pendingFile);
+      await submitAd(adValues, pendingFile, { onProgress: handleSubmitProgress });
+      handleSubmitProgress({ stage: 'done', progress: 1 });
       status = 'Submitted. The ad is now in the archive and your dashboard.';
       setTimeout(() => {
         closeSubmit();
@@ -213,6 +246,8 @@
         goto('/dashboard');
       }, 900);
     } catch (error) {
+      submitProgress = 0;
+      submitPhase = '';
       status = error?.message || 'The creative file is too large for browser storage. Try a smaller file or use a media URL.';
     } finally {
       submitting = false;
@@ -233,7 +268,7 @@
 
 {#if $submitOpen}
   <div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="submit-title">
-    <button class="overlay" type="button" aria-label="Close submit form" on:click={handleClose}></button>
+    <button class="overlay" type="button" aria-label="Close submit form" disabled={submitting} on:click={handleClose}></button>
     <div class="modal-box">
       <div class="modal-header">
         <div>
@@ -245,7 +280,7 @@
               : 'Provide enough context for people to understand the creative, source, and format.'}
           </p>
         </div>
-        <button class="icon-button" type="button" aria-label="Close submit form" on:click={handleClose}>×</button>
+        <button class="icon-button" type="button" aria-label="Close submit form" disabled={submitting} on:click={handleClose}>×</button>
       </div>
 
       <form class="modal-content form-grid" on:submit|preventDefault={submitForm}>
@@ -378,8 +413,25 @@
             <p class="status">{status}</p>
           {/if}
 
+          {#if submitting}
+            <div class="submit-progress" role="status" aria-live="polite">
+              <div class="submit-progress-header">
+                <span>{submitPhase || 'Submitting creative'}</span>
+                <span>{submitProgress}%</span>
+              </div>
+              <div class="progress-track" aria-hidden="true">
+                <span class="progress-fill" style={`width: ${submitProgress}%;`}></span>
+              </div>
+            </div>
+          {/if}
+
           <button class="button button-primary" type="submit" disabled={submitting}>
-            {submitting ? 'Working...' : isEditing ? 'Save changes' : 'Submit ad'}
+            {#if submitting}
+              <span class="loading-spinner button-spinner" aria-hidden="true"></span>
+              {isEditing ? 'Saving...' : 'Submitting...'}
+            {:else}
+              {isEditing ? 'Save changes' : 'Submit ad'}
+            {/if}
           </button>
           <button class="button button-secondary" type="button" disabled={submitting} on:click={resetForm}>
             {isEditing ? 'Reset changes' : 'Reset form'}
