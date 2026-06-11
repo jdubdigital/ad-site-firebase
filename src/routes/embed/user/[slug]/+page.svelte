@@ -13,6 +13,7 @@
   let publicUserLoading = false;
   let publicUserRequest = 0;
   let resizeObserver;
+  let heightFrame = 0;
 
   async function loadPublicUser(slugValue) {
     if (!slugValue || slugValue === publicUserSlug) return;
@@ -52,25 +53,40 @@
     );
   }
 
+  function queueEmbedHeight() {
+    if (!browser) return;
+    if (heightFrame) cancelAnimationFrame(heightFrame);
+
+    heightFrame = requestAnimationFrame(() => {
+      heightFrame = requestAnimationFrame(() => {
+        heightFrame = 0;
+        postEmbedHeight();
+      });
+    });
+  }
+
   onMount(() => {
     if (!embedRoot) return undefined;
 
     if (typeof ResizeObserver !== 'undefined') {
-      resizeObserver = new ResizeObserver(postEmbedHeight);
+      resizeObserver = new ResizeObserver(queueEmbedHeight);
       resizeObserver.observe(embedRoot);
     }
 
-    window.addEventListener('resize', postEmbedHeight);
-    window.addEventListener('load', postEmbedHeight);
+    window.addEventListener('resize', queueEmbedHeight);
+    window.addEventListener('orientationchange', queueEmbedHeight);
+    window.addEventListener('load', queueEmbedHeight);
 
-    tick().then(postEmbedHeight);
-    const timers = [100, 500, 1200].map((delay) => setTimeout(postEmbedHeight, delay));
+    tick().then(queueEmbedHeight);
+    const timers = [100, 400, 900, 1800, 3500, 6000].map((delay) => setTimeout(queueEmbedHeight, delay));
 
     return () => {
       resizeObserver?.disconnect();
-      window.removeEventListener('resize', postEmbedHeight);
-      window.removeEventListener('load', postEmbedHeight);
+      window.removeEventListener('resize', queueEmbedHeight);
+      window.removeEventListener('orientationchange', queueEmbedHeight);
+      window.removeEventListener('load', queueEmbedHeight);
       timers.forEach(clearTimeout);
+      if (heightFrame) cancelAnimationFrame(heightFrame);
     };
   });
 
@@ -87,7 +103,7 @@
       }
     : null;
   $: user = publicUser || getUserBySlug(slug) || adUser;
-  $: if (browser && embedRoot && slug && $adsReady) tick().then(postEmbedHeight);
+  $: if (browser && embedRoot && slug && $adsReady) tick().then(queueEmbedHeight);
 </script>
 
 <svelte:head>
