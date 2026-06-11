@@ -12,7 +12,7 @@
 <article class="ad-card">
   <button class="creative-button" type="button" aria-label={`Open ${ad.title}`} on:click={openAdPage}>
     <div class="creative-preview">
-      <CreativePreview {ad} />
+      <CreativePreview {ad} on:mediaready />
     </div>
   </button>
 </article>

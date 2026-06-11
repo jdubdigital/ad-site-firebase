@@ -521,6 +521,7 @@ video {
   width: 100%;
   min-height: 3rem;
   overflow: hidden;
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-muted));
   line-height: 0;
 }
 
@@ -529,6 +530,29 @@ video {
   display: block;
   width: 100%;
   height: auto;
+}
+
+.creative-media-shell > img,
+.creative-media-shell > video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.creative-media-shell.is-large {
+  display: grid;
+  width: auto;
+  max-width: 100%;
+  place-items: center;
+  background: transparent;
+}
+
+.creative-media-shell.is-large > img,
+.creative-media-shell.is-large > video {
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  max-height: 72vh;
 }
 
 .creative-loading-layer {

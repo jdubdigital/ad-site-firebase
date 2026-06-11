@@ -8,7 +8,10 @@
   const dispatch = createEventDispatcher();
 
   let frameShell;
+  let videoElement;
   let frameScale = 1;
+  let mediaActive = large;
+  let mediaInViewport = large;
   let mediaReady = false;
   let mediaKey = '';
 
@@ -24,9 +27,12 @@
   $: shellStyle = large
     ? `width: ${shellWidth}px; height: ${shellHeight}px;`
     : `height: ${shellHeight}px;`;
+  $: mediaShellStyle = large ? '' : `aspect-ratio: ${intrinsicWidth} / ${intrinsicHeight};`;
   $: nextMediaKey = `${ad.id}-${ad.type}-${src}-${ad.htmlPreviewUrl || ''}-${large}`;
   $: if (nextMediaKey !== mediaKey) {
     mediaKey = nextMediaKey;
+    mediaActive = large;
+    mediaInViewport = large;
     mediaReady = ad.type === 'html5' && !ad.htmlPreviewUrl;
   }
 
@@ -42,10 +48,57 @@
     tick().then(resizeFrame);
   }
 
+  $: if (!mediaActive && !large && mediaReady) {
+    mediaReady = ad.type === 'html5' && !ad.htmlPreviewUrl;
+  }
+
+  $: if (videoElement) {
+    if (mediaInViewport) {
+      videoElement.play().catch(() => {});
+    } else {
+      videoElement.pause();
+    }
+  }
+
   function markMediaReady() {
     if (mediaReady) return;
     mediaReady = true;
     tick().then(() => dispatch('mediaready'));
+  }
+
+  function observeMediaWindow(node) {
+    if (large || typeof IntersectionObserver === 'undefined') {
+      mediaActive = true;
+      return {};
+    }
+
+    const nearObserver = new IntersectionObserver(
+      ([entry]) => {
+        mediaActive = entry.isIntersecting;
+      },
+      {
+        rootMargin: '900px 0px',
+        threshold: 0
+      }
+    );
+    const viewportObserver = new IntersectionObserver(
+      ([entry]) => {
+        mediaInViewport = entry.isIntersecting;
+      },
+      {
+        threshold: 0.05
+      }
+    );
+
+    nearObserver.observe(node);
+    viewportObserver.observe(node);
+
+    return {
+      destroy() {
+        nearObserver.disconnect();
+        viewportObserver.disconnect();
+      }
+    };
   }
 
   onMount(() => {
@@ -65,20 +118,23 @@
       class:html5-frame-large={large}
       class="html5-frame-shell creative-media-shell"
       class:is-ready={mediaReady}
+      use:observeMediaWindow
       style={shellStyle}
       aria-busy={!mediaReady}
     >
-      <iframe
-        src={ad.htmlPreviewUrl}
-        title={`${ad.title} HTML5 preview`}
-        sandbox="allow-scripts"
-        loading={large ? 'eager' : 'lazy'}
-        referrerpolicy="no-referrer"
-        tabindex="-1"
-        style={frameStyle}
-        on:load={markMediaReady}
-      ></iframe>
-      {#if !mediaReady}
+      {#if mediaActive}
+        <iframe
+          src={ad.htmlPreviewUrl}
+          title={`${ad.title} HTML5 preview`}
+          sandbox="allow-scripts"
+          loading={large ? 'eager' : 'lazy'}
+          referrerpolicy="no-referrer"
+          tabindex="-1"
+          style={frameStyle}
+          on:load={markMediaReady}
+        ></iframe>
+      {/if}
+      {#if mediaActive && !mediaReady}
         <div class="creative-loading-layer" aria-hidden="true">
           <span class="loading-spinner small"></span>
         </div>
@@ -99,30 +155,49 @@
     </div>
   {/if}
 {:else if ad.type === 'video'}
-  <div class="creative-media-shell" class:is-ready={mediaReady} aria-busy={!mediaReady}>
-    <video
-      autoplay
-      loop
-      muted
-      playsinline
-      disablepictureinpicture
-      controlslist="nodownload nofullscreen noremoteplayback"
-      aria-label={`${ad.title} ${getAdTypeLabel(ad.type)} preview`}
-      on:loadeddata={markMediaReady}
-      on:canplay={markMediaReady}
-    >
-      <source src={src} type="video/mp4" />
-    </video>
-    {#if !mediaReady}
+  <div
+    class="creative-media-shell"
+    class:is-large={large}
+    class:is-ready={mediaReady}
+    use:observeMediaWindow
+    style={mediaShellStyle}
+    aria-busy={!mediaReady}
+  >
+    {#if mediaActive}
+      <video
+        bind:this={videoElement}
+        autoplay={mediaInViewport}
+        loop
+        muted
+        playsinline
+        disablepictureinpicture
+        controlslist="nodownload nofullscreen noremoteplayback"
+        aria-label={`${ad.title} ${getAdTypeLabel(ad.type)} preview`}
+        on:loadeddata={markMediaReady}
+        on:canplay={markMediaReady}
+      >
+        <source src={src} type="video/mp4" />
+      </video>
+    {/if}
+    {#if mediaActive && !mediaReady}
       <div class="creative-loading-layer" aria-hidden="true">
         <span class="loading-spinner small"></span>
       </div>
     {/if}
   </div>
 {:else}
-  <div class="creative-media-shell" class:is-ready={mediaReady} aria-busy={!mediaReady}>
-    <img src={src} alt={ad.title} loading={large ? 'eager' : 'lazy'} on:load={markMediaReady} on:error={markMediaReady} />
-    {#if !mediaReady}
+  <div
+    class="creative-media-shell"
+    class:is-large={large}
+    class:is-ready={mediaReady}
+    use:observeMediaWindow
+    style={mediaShellStyle}
+    aria-busy={!mediaReady}
+  >
+    {#if mediaActive}
+      <img src={src} alt={ad.title} loading={large ? 'eager' : 'lazy'} on:load={markMediaReady} on:error={markMediaReady} />
+    {/if}
+    {#if mediaActive && !mediaReady}
       <div class="creative-loading-layer" aria-hidden="true">
         <span class="loading-spinner small"></span>
       </div>
