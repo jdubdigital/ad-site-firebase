@@ -1,5 +1,7 @@
 <script>
+  import { browser } from '$app/environment';
   import { goto } from '$app/navigation';
+  import Copy from '@lucide/svelte/icons/copy';
   import Edit3 from '@lucide/svelte/icons/edit-3';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import { signedInEmail, signOut } from '$lib/stores/account';
@@ -20,10 +22,64 @@
   let accountType = 'Brand';
   let description = '';
   let saveStatus = '';
+  let copyStatus = '';
   let deleteStatus = '';
   let deletingAdIds = new Set();
 
+  const embedScriptOpen = '<script>';
+  const embedScriptClose = '</scr' + 'ipt>';
+
+  function escapeAttribute(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  function createPortfolioEmbedCode({ frameId, origin, slug, title, url }) {
+    return [
+      '<iframe',
+      `  id="${escapeAttribute(frameId)}"`,
+      `  title="${escapeAttribute(title)}"`,
+      `  src="${escapeAttribute(url)}"`,
+      '  width="100%"',
+      '  height="1"',
+      '  loading="lazy"',
+      '  scrolling="no"',
+      '  allowtransparency="true"',
+      '  style="border:0;display:block;width:100%;height:1px;overflow:hidden;background:transparent;"',
+      '></iframe>',
+      embedScriptOpen,
+      '(function () {',
+      `  var frame = document.getElementById(${JSON.stringify(frameId)});`,
+      "  window.addEventListener('message', function (event) {",
+      `    if (event.origin !== ${JSON.stringify(origin)}) return;`,
+      '    var data = event.data || {};',
+      `    if (data.type !== 'adarchive:portfolio-height' || data.slug !== ${JSON.stringify(slug)} || !frame) return;`,
+      "    frame.style.height = Math.max(1, Number(data.height) || 1) + 'px';",
+      '  });',
+      '}());',
+      embedScriptClose
+    ].join('\n');
+  }
+
   $: currentProfile = $profile;
+  $: siteOrigin = browser ? window.location.origin : 'https://ad-archive-34f6c.web.app';
+  $: portfolioUrl = currentProfile?.userSlug ? `${siteOrigin}/embed/user/${encodeURIComponent(currentProfile.userSlug)}` : '';
+  $: portfolioTitle = `${currentProfile?.name || 'Ad Archive'} portfolio`;
+  $: portfolioFrameId = currentProfile?.userSlug
+    ? `adarchive-portfolio-${String(currentProfile.userSlug).replace(/[^a-z0-9_-]/gi, '-')}`
+    : 'adarchive-portfolio-feed';
+  $: portfolioEmbedCode = portfolioUrl
+    ? createPortfolioEmbedCode({
+        frameId: portfolioFrameId,
+        origin: siteOrigin,
+        slug: currentProfile.userSlug,
+        title: portfolioTitle,
+        url: portfolioUrl
+      })
+    : '';
   $: myAds = $ads.filter((ad) => getAdUserSlug(ad) === currentProfile.userSlug);
   $: likedAds = $ads.filter((ad) => ad.liked).sort((a, b) => getAdChronology(b) - getAdChronology(a));
   $: favoriteUserDetails = $favoriteUsers.map((slug) => getUserBySlug(slug)).filter(Boolean);
@@ -98,6 +154,19 @@
       deletingAdIds = new Set([...deletingAdIds].filter((id) => id !== ad.id));
       setTimeout(() => (deleteStatus = ''), 2200);
     }
+  }
+
+  async function copyPortfolioEmbed() {
+    if (!portfolioEmbedCode) return;
+
+    try {
+      await navigator.clipboard.writeText(portfolioEmbedCode);
+      copyStatus = 'Embed code copied.';
+    } catch (error) {
+      copyStatus = 'Select the code and copy it manually.';
+    }
+
+    setTimeout(() => (copyStatus = ''), 2000);
   }
 
   function openAdPage(ad) {
@@ -195,6 +264,36 @@
             <button class="button button-primary" type="button" on:click={saveDashboardProfile}>Save profile</button>
             {#if saveStatus}
               <p class="status">{saveStatus}</p>
+            {/if}
+          </div>
+        </section>
+
+        <section class="dashboard-panel">
+          <div class="panel-header">
+            <h3>Portfolio feed</h3>
+            <span class="muted">{myAds.length} ads</span>
+          </div>
+          <div class="field-grid">
+            <label class="field-label">
+              Embed link
+              <input class="field" type="text" readonly value={portfolioUrl} />
+            </label>
+
+            <label class="field-label">
+              Embed code
+              <textarea class="textarea embed-code-field" readonly value={portfolioEmbedCode}></textarea>
+            </label>
+
+            <div class="row-actions portfolio-actions">
+              <button class="button button-secondary" type="button" on:click={copyPortfolioEmbed}>
+                <Copy size={17} strokeWidth={2.25} aria-hidden="true" />
+                Copy code
+              </button>
+              <a class="button button-secondary" href={portfolioUrl} target="_blank" rel="noreferrer">Preview feed</a>
+            </div>
+
+            {#if copyStatus}
+              <p class="status">{copyStatus}</p>
             {/if}
           </div>
         </section>

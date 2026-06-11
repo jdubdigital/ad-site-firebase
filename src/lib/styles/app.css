@@ -1250,6 +1250,39 @@ video {
   padding-top: 1.25rem;
 }
 
+.embed-code-field {
+  min-height: 7rem;
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.portfolio-actions {
+  justify-content: flex-start;
+}
+
+.embed-app {
+  background: transparent;
+}
+
+.embed-page {
+  width: min(100%, 80rem);
+  margin-inline: auto;
+  background: transparent;
+  padding: 0;
+}
+
+.embed-loading {
+  display: grid;
+  min-height: 12rem;
+  place-items: center;
+}
+
+.embed-page .empty-state {
+  border: 0;
+  background: transparent;
+}
+
 .dashboard-row {
   display: flex;
   flex-direction: column;

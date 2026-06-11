@@ -1,6 +1,6 @@
 <script>
   import { onMount } from 'svelte';
-  import { navigating } from '$app/stores';
+  import { navigating, page } from '$app/stores';
   import '$lib/styles/app.css';
   import FilterPanel from '$lib/components/FilterPanel.svelte';
   import Header from '$lib/components/Header.svelte';
@@ -29,22 +29,41 @@
 
   $: appLoading = Boolean($navigating) || !$adsReady;
   $: loadingLabel = !$adsReady ? 'Loading ads' : 'Loading page';
+  $: isEmbed = $page.url.pathname.startsWith('/embed/');
 </script>
 
-<div class="app-shell">
-  {#if appLoading}
+<svelte:head>
+  {#if isEmbed}
+    <style>
+      html,
+      body {
+        background: transparent !important;
+        overflow: hidden;
+      }
+    </style>
+  {/if}
+</svelte:head>
+
+<div class="app-shell" class:embed-app={isEmbed}>
+  {#if appLoading && !isEmbed}
     <div class="page-progress" aria-hidden="true"></div>
     <div class="page-loader" role="status" aria-live="polite" aria-label={loadingLabel}>
       <span class="loading-spinner" aria-hidden="true"></span>
     </div>
   {/if}
 
-  <Header />
-  <FilterPanel />
+  {#if !isEmbed}
+    <Header />
+    <FilterPanel />
+  {/if}
+
   <slot />
-  <footer class="footer">
-    <p>© 2025 Ad Archive · SvelteKit prototype with optional Firebase persistence</p>
-  </footer>
-  <LoginModal />
-  <SubmitModal />
+
+  {#if !isEmbed}
+    <footer class="footer">
+      <p>© 2025 Ad Archive · SvelteKit prototype with optional Firebase persistence</p>
+    </footer>
+    <LoginModal />
+    <SubmitModal />
+  {/if}
 </div>

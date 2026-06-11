@@ -4,6 +4,7 @@
 
   export let ads = [];
   export let id = undefined;
+  export let externalLinks = false;
 
   let grid;
   let itemRefs = [];
@@ -76,7 +77,7 @@
 <div class="masonry" {id} bind:this={grid}>
   {#each ads as ad, index (ad.id)}
     <div class="masonry-item" bind:this={itemRefs[index]}>
-      <AdCard {ad} on:mediaready={queueLayout} />
+      <AdCard {ad} {externalLinks} on:mediaready={queueLayout} />
     </div>
   {/each}
 </div>
