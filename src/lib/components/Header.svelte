@@ -16,6 +16,11 @@
       <span class="brand-gradient">Ad</span><span class="brand-dark">Archive</span>
     </a>
 
+    <button class="desktop-search search-wrap" type="button" aria-label="Open search" on:click={openFilters}>
+      <Search class="search-icon" size={19} strokeWidth={2.25} aria-hidden="true" />
+      <span class="search-input search-input-faux">Search ads, brands, categories...</span>
+    </button>
+
     <nav class="nav" aria-label="Main navigation">
       <div class="nav-links">
         <a href="/">Home</a>

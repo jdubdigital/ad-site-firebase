@@ -34,9 +34,8 @@
 <div class="app-shell">
   {#if appLoading}
     <div class="page-progress" aria-hidden="true"></div>
-    <div class="page-loader" role="status" aria-live="polite">
-      <span class="loading-spinner"></span>
-      <span>{loadingLabel}</span>
+    <div class="page-loader" role="status" aria-live="polite" aria-label={loadingLabel}>
+      <span class="loading-spinner" aria-hidden="true"></span>
     </div>
   {/if}
 

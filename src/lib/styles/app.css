@@ -131,17 +131,14 @@ video {
   top: 1rem;
   left: 50%;
   z-index: 91;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.65rem;
+  display: grid;
+  width: 2.65rem;
+  height: 2.65rem;
+  place-items: center;
   border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
   border-radius: 999px;
   background: color-mix(in srgb, var(--bg-soft) 88%, transparent);
   box-shadow: var(--shadow);
-  color: var(--text);
-  padding: 0.55rem 0.8rem;
-  font-size: 0.85rem;
-  font-weight: 750;
   transform: translateX(-50%);
   backdrop-filter: blur(14px);
 }
@@ -224,6 +221,36 @@ video {
   outline: 0;
 }
 
+.desktop-search {
+  display: none;
+  flex: 1 1 32rem;
+  max-width: 32.5rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+}
+
+.search-input-faux {
+  display: flex;
+  min-height: 3.05rem;
+  align-items: center;
+  color: var(--muted);
+}
+
+.desktop-search:hover .search-input-faux {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+}
+
+.desktop-search:focus-visible {
+  outline: 0;
+}
+
+.desktop-search:focus-visible .search-input-faux {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
 .search-input:focus,
 .field:focus,
 .select:focus,
@@ -295,7 +322,7 @@ video {
   background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 72%, #ec4899));
   border-color: var(--accent);
   color: white;
-  box-shadow: 0 10px 24px color-mix(in srgb, var(--accent) 25%, transparent);
+  box-shadow: none;
 }
 
 .account-actions {
@@ -413,7 +440,7 @@ video {
 }
 
 .toolbar {
-  padding-block: 2rem 1rem;
+  padding-block: 2rem 1.25rem;
 }
 
 .toolbar-inner {
@@ -1327,6 +1354,10 @@ video {
     display: flex;
   }
 
+  .toolbar {
+    padding-block: 2rem 1.55rem;
+  }
+
   .toolbar-formats {
     display: flex;
   }
@@ -1347,6 +1378,16 @@ video {
 
   .dashboard-heading {
     align-items: center;
+  }
+}
+
+@media (min-width: 900px) {
+  .desktop-search {
+    display: block;
+  }
+
+  .search-trigger {
+    display: none;
   }
 }
 
@@ -1684,7 +1725,7 @@ video {
 
   .page-loader {
     top: 0.65rem;
-    padding: 0.45rem 0.7rem;
-    font-size: 0.78rem;
+    width: 2.4rem;
+    height: 2.4rem;
   }
 }
