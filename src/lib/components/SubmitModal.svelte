@@ -20,7 +20,6 @@
   let customWidth = '';
   let customHeight = '';
   let tags = '';
-  let landingUrl = '';
   let mediaUrl = '';
   let notes = '';
   let rights = false;
@@ -60,7 +59,6 @@
     type = ad.type || 'image';
     setSizeValue(ad.size || '300x250');
     tags = ad.tags || '';
-    landingUrl = ad.landingUrl || '';
     mediaUrl = ad.mediaUrl && !ad.mediaUrl.startsWith('data:') ? ad.mediaUrl : '';
     notes = ad.notes || '';
     pendingMediaData = ad.mediaUrl && ad.mediaUrl.startsWith('data:') ? ad.mediaUrl : '';
@@ -85,7 +83,6 @@
     customWidth = '';
     customHeight = '';
     tags = '';
-    landingUrl = '';
     mediaUrl = '';
     notes = '';
     rights = false;
@@ -194,7 +191,6 @@
       userType: cleanSubmittedValue(currentProfile.type),
       mediaUrl: pendingMediaData || cleanedMediaUrl,
       mediaFileName: cleanSubmittedValue(pendingFileName),
-      landingUrl: cleanSubmittedValue(landingUrl),
       notes: cleanSubmittedValue(notes),
       type
     };
@@ -344,11 +340,6 @@
               <label class="field-label" style="grid-column: 1 / -1;">
                 Tags
                 <input bind:value={tags} class="field" type="text" placeholder="Animated, summer, casino" />
-              </label>
-
-              <label class="field-label" style="grid-column: 1 / -1;">
-                Landing URL
-                <input bind:value={landingUrl} class="field" type="url" placeholder="https://example.com/campaign" />
               </label>
             </div>
           </section>

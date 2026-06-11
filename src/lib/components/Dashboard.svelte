@@ -2,7 +2,7 @@
   import { goto } from '$app/navigation';
   import Edit3 from '@lucide/svelte/icons/edit-3';
   import Trash2 from '@lucide/svelte/icons/trash-2';
-  import { signedInEmail } from '$lib/stores/account';
+  import { signedInEmail, signOut } from '$lib/stores/account';
   import { ads, deleteAd } from '$lib/stores/archive';
   import { favoriteUsers } from '$lib/stores/favorites';
   import { profile, saveProfile } from '$lib/stores/profile';
@@ -102,6 +102,11 @@
 
   function openAdPage(ad) {
     goto(`/ad/${encodeURIComponent(String(ad.id))}`);
+  }
+
+  async function handleSignOut() {
+    await signOut();
+    goto('/');
   }
 
   $: if (currentProfile && !displayName) syncFields();
@@ -279,6 +284,10 @@
           <p class="muted">No posts yet.</p>
         {/if}
       </section>
+    </div>
+
+    <div class="dashboard-footer-actions">
+      <button class="button button-secondary" type="button" on:click={handleSignOut}>Sign out</button>
     </div>
   </div>
 </section>

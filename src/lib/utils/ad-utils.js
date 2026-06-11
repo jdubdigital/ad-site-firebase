@@ -58,7 +58,6 @@ export function getAdSearchText(ad) {
     getAdTypeLabel(ad.type),
     getAdUserName(ad),
     getAdUserType(ad),
-    ad.landingUrl,
     ad.notes,
     ad.mediaFileName,
     user?.location,

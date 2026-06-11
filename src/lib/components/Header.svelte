@@ -5,7 +5,7 @@
   import Moon from '@lucide/svelte/icons/moon';
   import Search from '@lucide/svelte/icons/search';
   import Sun from '@lucide/svelte/icons/sun';
-  import { signedInEmail, signOut } from '$lib/stores/account';
+  import { signedInEmail } from '$lib/stores/account';
   import { activeFilters, setSearchQuery } from '$lib/stores/archive';
   import { openFilters, openLogin } from '$lib/stores/ui';
   import { setThemeMode, themeMode } from '$lib/stores/theme';
@@ -79,13 +79,9 @@
         >
           {$signedInEmail ? $signedInEmail.split('@')[0] : 'Sign in'}
         </button>
-        <button
-          class="button button-primary"
-          type="button"
-          on:click={() => ($signedInEmail ? signOut() : openLogin('create'))}
-        >
-          {$signedInEmail ? 'Sign out' : 'Create account'}
-        </button>
+        {#if !$signedInEmail}
+          <button class="button button-primary" type="button" on:click={() => openLogin('create')}>Create account</button>
+        {/if}
       </div>
 
       <button

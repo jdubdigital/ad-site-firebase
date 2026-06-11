@@ -72,9 +72,6 @@
               <span>{ad.likes} likes</span>
             </button>
 
-            {#if ad.landingUrl}
-              <a class="button button-primary" href={ad.landingUrl} target="_blank" rel="noreferrer">Visit URL</a>
-            {/if}
           </div>
         </aside>
       </div>

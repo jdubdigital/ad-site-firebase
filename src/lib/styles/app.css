@@ -1156,6 +1156,14 @@ video {
   margin-top: 1.25rem;
 }
 
+.dashboard-footer-actions {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid var(--border);
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+}
+
 .dashboard-row {
   display: flex;
   flex-direction: column;
@@ -1407,6 +1415,15 @@ video {
   .dashboard-main {
     gap: 0.9rem;
     margin-top: 0.9rem;
+  }
+
+  .dashboard-footer-actions {
+    margin-top: 0.9rem;
+    padding-top: 0.9rem;
+  }
+
+  .dashboard-footer-actions .button {
+    width: 100%;
   }
 
   .dashboard-card,
