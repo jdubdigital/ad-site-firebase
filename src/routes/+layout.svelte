@@ -60,7 +60,7 @@
 
   {#if !isEmbed}
     <footer class="footer">
-      <p>© 2025 Ad Archive · SvelteKit prototype with optional Firebase persistence</p>
+      <p>© 2026 Ad Archive</p>
     </footer>
     <LoginModal />
     <SubmitModal />
