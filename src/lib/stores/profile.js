@@ -1,6 +1,11 @@
-import { writable } from 'svelte/store';
+import { get, writable } from 'svelte/store';
 import { defaultDashboardProfile } from '$lib/data/catalog';
-import { getDashboardProfile, setDashboardProfile } from '$lib/repositories/profile';
+import {
+  checkDisplayNameAvailable as checkProfileDisplayNameAvailable,
+  checkUserSlugAvailable as checkProfileSlugAvailable,
+  getDashboardProfile,
+  setDashboardProfile
+} from '$lib/repositories/profile';
 
 export const profile = writable(defaultDashboardProfile);
 
@@ -9,16 +14,21 @@ export async function hydrateProfile() {
 }
 
 export async function saveProfile(updates) {
-  let saved;
+  const current = get(profile);
+  const nextProfile = {
+    ...current,
+    ...updates
+  };
+  const saved = (await setDashboardProfile(nextProfile)) || nextProfile;
 
-  profile.update((current) => {
-    saved = {
-      ...current,
-      ...updates
-    };
-    return saved;
-  });
-
-  await setDashboardProfile(saved);
+  profile.set(saved);
   return saved;
+}
+
+export async function checkUserSlugAvailable(slug, currentSlug = '') {
+  return checkProfileSlugAvailable(slug, currentSlug);
+}
+
+export async function checkDisplayNameAvailable(name, currentNameKey = '') {
+  return checkProfileDisplayNameAvailable(name, currentNameKey);
 }

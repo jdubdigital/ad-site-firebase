@@ -44,6 +44,15 @@ export async function createAccount(email, password) {
   return { email };
 }
 
+export async function deleteCurrentAccount() {
+  if (isFirebaseConfigured) {
+    await firebaseAccount.deleteCurrentAccount();
+  }
+
+  authUser.set(null);
+  signedInEmail.set('');
+}
+
 export async function signOut() {
   if (isFirebaseConfigured) {
     await firebaseAccount.signOut();

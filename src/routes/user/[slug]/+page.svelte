@@ -4,6 +4,7 @@
   import { page } from '$app/stores';
   import MasonryGrid from '$lib/components/MasonryGrid.svelte';
   import { getPublicProfileBySlug } from '$lib/repositories/profile';
+  import { signedInEmail } from '$lib/stores/account';
   import { ads } from '$lib/stores/archive';
   import { favoriteUsers, toggleFavoriteUser } from '$lib/stores/favorites';
   import { profile } from '$lib/stores/profile';
@@ -101,10 +102,10 @@
           class:button-primary={isFavorited}
           class:button-secondary={!isFavorited}
           type="button"
-          aria-pressed={isFavorited}
+          aria-pressed={$signedInEmail ? isFavorited : false}
           on:click={() => toggleFavoriteUser(slug)}
         >
-          {isFavorited ? '♥ Favorited' : '♡ Favorite'}
+          {$signedInEmail ? (isFavorited ? '♥ Favorited' : '♡ Favorite') : 'Sign in to favorite'}
         </button>
       </div>
     </div>

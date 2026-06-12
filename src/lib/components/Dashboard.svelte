@@ -5,9 +5,9 @@
   import Edit3 from '@lucide/svelte/icons/edit-3';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import { signedInEmail, signOut } from '$lib/stores/account';
-  import { ads, deleteAd } from '$lib/stores/archive';
+  import { ads, deleteAd, hydrateAds } from '$lib/stores/archive';
   import { favoriteUsers } from '$lib/stores/favorites';
-  import { profile, saveProfile } from '$lib/stores/profile';
+  import { checkDisplayNameAvailable, checkUserSlugAvailable, profile, saveProfile } from '$lib/stores/profile';
   import { openSubmit } from '$lib/stores/ui';
   import {
     getAdChronology,
@@ -18,11 +18,24 @@
     getUserBySlug,
     getUserInitials
   } from '$lib/utils/ad-utils';
+  import { cleanDisplayName, createDisplayNameKey, createUsernameSlug } from '$lib/utils/slug';
 
   let displayName = '';
+  let displayNameStatus = '';
+  let displayNameAvailable = true;
+  let checkingDisplayName = false;
+  let displayNameCheckTimer;
+  let displayNameCheckRun = 0;
+  let username = '';
   let accountType = 'Brand';
   let description = '';
   let saveStatus = '';
+  let usernameStatus = '';
+  let usernameAvailable = true;
+  let checkingUsername = false;
+  let savingProfile = false;
+  let usernameCheckTimer;
+  let usernameCheckRun = 0;
   let copyStatus = '';
   let deleteStatus = '';
   let deletingAdIds = new Set();
@@ -103,25 +116,141 @@
   $: favoriteUserDetails = $favoriteUsers.map((slug) => getUserBySlug(slug)).filter(Boolean);
   $: if (currentProfile) {
     displayName = displayName || currentProfile.name;
+    username = username || currentProfile.username || currentProfile.userSlug;
     accountType = accountType || currentProfile.type;
     description = description || currentProfile.description;
   }
 
   function syncFields() {
     displayName = currentProfile.name;
+    username = currentProfile.username || currentProfile.userSlug;
     accountType = currentProfile.type;
     description = currentProfile.description;
   }
 
-  function saveDashboardProfile() {
-    saveProfile({
-      name: displayName.trim() || currentProfile.name,
-      type: accountType,
-      description: description.trim() || currentProfile.description
-    });
-    syncFields();
-    saveStatus = 'Profile saved for this demo.';
-    setTimeout(() => (saveStatus = ''), 1800);
+  async function checkDisplayNameNow() {
+    const requestedName = cleanDisplayName(displayName, '');
+    const requestedKey = createDisplayNameKey(requestedName, '');
+    const currentKey = currentProfile.displayNameKey || createDisplayNameKey(currentProfile.name, '');
+    const run = ++displayNameCheckRun;
+
+    displayNameAvailable = false;
+
+    if (!requestedName || requestedName.length < 2) {
+      displayNameStatus = 'Use at least 2 characters.';
+      return false;
+    }
+
+    if (requestedKey === currentKey) {
+      displayNameAvailable = true;
+      displayNameStatus = 'Current display name.';
+      return true;
+    }
+
+    checkingDisplayName = true;
+    displayNameStatus = 'Checking display name...';
+
+    try {
+      const available = await checkDisplayNameAvailable(requestedName, currentKey);
+      if (run !== displayNameCheckRun) return false;
+
+      displayNameAvailable = available;
+      displayNameStatus = available ? 'Display name is available.' : 'That display name is already taken.';
+      return available;
+    } catch (error) {
+      if (run === displayNameCheckRun) displayNameStatus = 'Unable to check that display name right now.';
+      return false;
+    } finally {
+      if (run === displayNameCheckRun) checkingDisplayName = false;
+    }
+  }
+
+  function scheduleDisplayNameCheck() {
+    clearTimeout(displayNameCheckTimer);
+    displayName = cleanDisplayName(displayName, '');
+    displayNameAvailable = createDisplayNameKey(displayName, '') === (currentProfile.displayNameKey || createDisplayNameKey(currentProfile.name, ''));
+    displayNameStatus = displayName ? 'Checking display name...' : '';
+
+    if (displayName) {
+      displayNameCheckTimer = setTimeout(checkDisplayNameNow, 350);
+    }
+  }
+
+  async function checkUsernameNow() {
+    const requestedSlug = createUsernameSlug(username, '');
+    const currentSlug = currentProfile.userSlug;
+    const run = ++usernameCheckRun;
+
+    usernameAvailable = false;
+
+    if (!requestedSlug || requestedSlug.length < 3) {
+      usernameStatus = 'Use at least 3 characters.';
+      return false;
+    }
+
+    if (requestedSlug === currentSlug) {
+      usernameAvailable = true;
+      usernameStatus = `Current username: /user/${requestedSlug}`;
+      return true;
+    }
+
+    checkingUsername = true;
+    usernameStatus = 'Checking username...';
+
+    try {
+      const available = await checkUserSlugAvailable(requestedSlug, currentSlug);
+      if (run !== usernameCheckRun) return false;
+
+      usernameAvailable = available;
+      usernameStatus = available ? `Available: /user/${requestedSlug}` : 'That username is already taken.';
+      return available;
+    } catch (error) {
+      if (run === usernameCheckRun) usernameStatus = 'Unable to check that username right now.';
+      return false;
+    } finally {
+      if (run === usernameCheckRun) checkingUsername = false;
+    }
+  }
+
+  function scheduleUsernameCheck() {
+    clearTimeout(usernameCheckTimer);
+    username = createUsernameSlug(username, '');
+    usernameAvailable = username === currentProfile.userSlug;
+    usernameStatus = username ? 'Checking username...' : '';
+
+    if (username) {
+      usernameCheckTimer = setTimeout(checkUsernameNow, 350);
+    }
+  }
+
+  async function saveDashboardProfile() {
+    if (savingProfile) return;
+    saveStatus = '';
+    savingProfile = true;
+
+    try {
+      const requestedName = cleanDisplayName(displayName, '');
+      const requestedSlug = createUsernameSlug(username, '');
+      const [nameAvailable, slugAvailable] = await Promise.all([checkDisplayNameNow(), checkUsernameNow()]);
+      if (!nameAvailable) throw new Error('Choose an available display name before saving.');
+      if (!slugAvailable) throw new Error('Choose an available username before saving.');
+
+      await saveProfile({
+        name: requestedName,
+        username: requestedSlug,
+        userSlug: requestedSlug,
+        type: accountType,
+        description: description.trim() || currentProfile.description
+      });
+      syncFields();
+      await hydrateAds();
+      saveStatus = 'Profile saved.';
+      setTimeout(() => (saveStatus = ''), 1800);
+    } catch (error) {
+      saveStatus = error?.message || 'Unable to save profile.';
+    } finally {
+      savingProfile = false;
+    }
   }
 
   function handleAvatarUpload(event) {
@@ -142,18 +271,30 @@
 
     const reader = new FileReader();
     reader.addEventListener('load', () => {
-      saveProfile({ avatarUrl: String(reader.result || '') });
-      saveStatus = 'Profile picture uploaded for this demo.';
-      event.currentTarget.value = '';
-      setTimeout(() => (saveStatus = ''), 1800);
+      saveProfile({ avatarUrl: String(reader.result || '') })
+        .then(() => {
+          saveStatus = 'Profile picture uploaded.';
+          setTimeout(() => (saveStatus = ''), 1800);
+        })
+        .catch((error) => {
+          saveStatus = error?.message || 'Unable to upload profile picture.';
+        })
+        .finally(() => {
+          event.currentTarget.value = '';
+        });
     });
     reader.readAsDataURL(file);
   }
 
   function removeAvatar() {
-    saveProfile({ avatarUrl: '' });
-    saveStatus = 'Profile picture removed.';
-    setTimeout(() => (saveStatus = ''), 1800);
+    saveProfile({ avatarUrl: '' })
+      .then(() => {
+        saveStatus = 'Profile picture removed.';
+        setTimeout(() => (saveStatus = ''), 1800);
+      })
+      .catch((error) => {
+        saveStatus = error?.message || 'Unable to remove profile picture.';
+      });
   }
 
   async function handleDeleteAd(ad) {
@@ -262,7 +403,42 @@
 
             <label class="field-label">
               Display name
-              <input bind:value={displayName} class="field" type="text" />
+              <input
+                class="field"
+                type="text"
+                minlength="2"
+                maxlength="64"
+                autocomplete="name"
+                value={displayName}
+                on:input={(event) => {
+                  displayName = event.currentTarget.value;
+                  scheduleDisplayNameCheck();
+                }}
+                on:blur={checkDisplayNameNow}
+              />
+              {#if displayNameStatus}
+                <span class:status-good={displayNameAvailable} class="field-help">{displayNameStatus}</span>
+              {/if}
+            </label>
+
+            <label class="field-label">
+              Username
+              <input
+                class="field"
+                type="text"
+                minlength="3"
+                maxlength="48"
+                autocomplete="username"
+                value={username}
+                on:input={(event) => {
+                  username = event.currentTarget.value;
+                  scheduleUsernameCheck();
+                }}
+                on:blur={checkUsernameNow}
+              />
+              {#if usernameStatus}
+                <span class:status-good={usernameAvailable} class="field-help">{usernameStatus}</span>
+              {/if}
             </label>
 
             <label class="field-label">
@@ -279,7 +455,14 @@
               <textarea bind:value={description} class="textarea"></textarea>
             </label>
 
-            <button class="button button-primary" type="button" on:click={saveDashboardProfile}>Save profile</button>
+            <button
+              class="button button-primary"
+              type="button"
+              disabled={savingProfile || checkingDisplayName || checkingUsername}
+              on:click={saveDashboardProfile}
+            >
+              {savingProfile ? 'Saving...' : 'Save profile'}
+            </button>
             {#if saveStatus}
               <p class="status">{saveStatus}</p>
             {/if}

@@ -32,6 +32,14 @@ export async function createAccount(email, password) {
   return credential.user;
 }
 
+export async function deleteCurrentAccount() {
+  const services = await getFirebaseServices();
+  const user = services?.auth.currentUser;
+  if (!services || !user) return;
+
+  await services.authApi.deleteUser(user);
+}
+
 export async function signOut() {
   const services = await getFirebaseServices();
   if (!services) return;

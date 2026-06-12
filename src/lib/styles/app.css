@@ -892,6 +892,16 @@ video {
   font-weight: 700;
 }
 
+.field-help {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.field-help.status-good {
+  color: var(--accent);
+}
+
 .dropzone {
   display: grid;
   place-items: center;

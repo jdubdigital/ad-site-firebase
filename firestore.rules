@@ -30,6 +30,26 @@ service cloud.firestore {
         && request.resource.data.likes == resource.data.likes;
     }
 
+    function validUsernameSlug(slug) {
+      return slug is string
+        && slug.matches('^[a-z0-9][a-z0-9-]{1,46}[a-z0-9]$');
+    }
+
+    function validDisplayNameKey(key) {
+      return key is string
+        && key.matches('^[a-z0-9][a-z0-9-]{0,62}[a-z0-9]$');
+    }
+
+    function profileHasOwnedUsername(uid) {
+      return validUsernameSlug(request.resource.data.userSlug)
+        && getAfter(/databases/$(database)/documents/usernames/$(request.resource.data.userSlug)).data.ownerUid == uid;
+    }
+
+    function profileHasOwnedDisplayName(uid) {
+      return validDisplayNameKey(request.resource.data.displayNameKey)
+        && getAfter(/databases/$(database)/documents/displayNames/$(request.resource.data.displayNameKey)).data.ownerUid == uid;
+    }
+
     match /ads/{adId} {
       allow read: if true;
       allow create: if signedIn()
@@ -44,7 +64,39 @@ service cloud.firestore {
 
     match /profiles/{uid} {
       allow read: if true;
-      allow create, update, delete: if owns(uid);
+      allow create, update: if owns(uid)
+        && request.resource.data.ownerUid == request.auth.uid
+        && profileHasOwnedUsername(uid)
+        && profileHasOwnedDisplayName(uid);
+      allow delete: if owns(uid);
+    }
+
+    match /usernames/{slug} {
+      allow read: if true;
+      allow create: if signedIn()
+        && validUsernameSlug(slug)
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.userSlug == slug;
+      allow update: if signedIn()
+        && validUsernameSlug(slug)
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.userSlug == slug;
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    match /displayNames/{key} {
+      allow read: if true;
+      allow create: if signedIn()
+        && validDisplayNameKey(key)
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.displayNameKey == key;
+      allow update: if signedIn()
+        && validDisplayNameKey(key)
+        && resource.data.ownerUid == request.auth.uid
+        && request.resource.data.ownerUid == resource.data.ownerUid
+        && request.resource.data.displayNameKey == key;
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
     }
 
     match /userState/{uid} {

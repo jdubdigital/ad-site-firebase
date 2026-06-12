@@ -8,6 +8,28 @@ export function createSlug(value, fallback = 'user') {
   return slug || fallback;
 }
 
+export function createUsernameSlug(value, fallback = '') {
+  return createSlug(value, fallback).replace(/-+/g, '-');
+}
+
+export function isValidUsernameSlug(value) {
+  const slug = createUsernameSlug(value, '');
+  return slug.length >= 3 && slug.length <= 48 && slug === value;
+}
+
+export function cleanDisplayName(value, fallback = '') {
+  const name = String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 64);
+
+  return name || fallback;
+}
+
+export function createDisplayNameKey(value, fallback = '') {
+  return createSlug(cleanDisplayName(value), fallback).slice(0, 64);
+}
+
 export function createNameFromEmail(email, fallback = 'New User') {
   const name = String(email || '')
     .split('@')[0]

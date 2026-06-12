@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import CreativePreview from '$lib/components/CreativePreview.svelte';
+  import { signedInEmail } from '$lib/stores/account';
   import { ads, adsReady, toggleAdLike } from '$lib/stores/archive';
   import { getAdTypeLabel, getAdUserName, getAdUserSlug, getAdUserType, getMediumLabel } from '$lib/utils/ad-utils';
 
@@ -64,11 +65,11 @@
               class:is-liked={ad.liked}
               class="button button-secondary like-detail-button"
               type="button"
-              aria-label={ad.liked ? `Unlike ${ad.title}` : `Like ${ad.title}`}
+              aria-label={$signedInEmail ? (ad.liked ? `Unlike ${ad.title}` : `Like ${ad.title}`) : 'Sign in to like ads'}
               on:click={() => toggleAdLike(ad.id)}
             >
               <span aria-hidden="true">{ad.liked ? '♥' : '♡'}</span>
-              <span>{ad.likes} likes</span>
+              <span>{$signedInEmail ? `${ad.likes} likes` : 'Sign in to like'}</span>
             </button>
 
           </div>

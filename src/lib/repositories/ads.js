@@ -5,7 +5,7 @@ import * as localAds from './ads.local';
 export async function loadAds() {
   if (isFirebaseConfigured) {
     const user = await getCurrentFirebaseUser();
-    const likedIds = user ? (await firebaseAds.getLikedAdIds()) || [] : localAds.getLikedAdIds();
+    const likedIds = user ? (await firebaseAds.getLikedAdIds()) || [] : [];
     const ads = await firebaseAds.loadAds(likedIds);
     if (ads) return ads;
   }
@@ -16,7 +16,7 @@ export async function loadAds() {
 export async function getLikedAdIds() {
   if (isFirebaseConfigured) {
     const user = await getCurrentFirebaseUser();
-    if (!user) return localAds.getLikedAdIds();
+    if (!user) return [];
 
     const ids = await firebaseAds.getLikedAdIds();
     if (ids) return ids;
@@ -32,6 +32,7 @@ export async function setLikedAdIds(ids) {
       await firebaseAds.setLikedAdIds(ids);
       return;
     }
+    return;
   }
 
   localAds.setLikedAdIds(ids);

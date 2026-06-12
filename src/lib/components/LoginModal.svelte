@@ -1,18 +1,120 @@
 <script>
-  import { get } from 'svelte/store';
   import { defaultDashboardProfile } from '$lib/data/catalog';
-  import { createAccount, signIn } from '$lib/stores/account';
-  import { profile, saveProfile } from '$lib/stores/profile';
+  import { createAccount, deleteCurrentAccount, signIn } from '$lib/stores/account';
+  import { checkDisplayNameAvailable, checkUserSlugAvailable, saveProfile } from '$lib/stores/profile';
   import { closeLogin, loginMode, loginOpen } from '$lib/stores/ui';
-  import { createNameFromEmail, createSlug } from '$lib/utils/slug';
+  import { cleanDisplayName, createUsernameSlug } from '$lib/utils/slug';
 
   let email = '';
+  let displayName = '';
+  let displayNameStatus = '';
+  let displayNameAvailable = false;
+  let checkingDisplayName = false;
+  let displayNameCheckTimer;
+  let displayNameCheckRun = 0;
+  let username = '';
+  let usernameStatus = '';
+  let usernameAvailable = false;
+  let checkingUsername = false;
+  let usernameCheckTimer;
+  let usernameCheckRun = 0;
   let password = '';
   let accountType = 'Brand';
   let status = '';
   let submitting = false;
 
   $: isCreate = $loginMode === 'create';
+  $: usernameSlug = createUsernameSlug(username, '');
+
+  async function checkDisplayNameNow() {
+    const name = cleanDisplayName(displayName, '');
+    const run = ++displayNameCheckRun;
+
+    displayNameAvailable = false;
+
+    if (!isCreate || !name) {
+      displayNameStatus = '';
+      return false;
+    }
+
+    if (name.length < 2) {
+      displayNameStatus = 'Use at least 2 characters.';
+      return false;
+    }
+
+    checkingDisplayName = true;
+    displayNameStatus = 'Checking display name...';
+
+    try {
+      const available = await checkDisplayNameAvailable(name);
+      if (run !== displayNameCheckRun) return false;
+
+      displayNameAvailable = available;
+      displayNameStatus = available ? 'Display name is available.' : 'That display name is already taken.';
+      return available;
+    } catch (error) {
+      if (run === displayNameCheckRun) displayNameStatus = 'Unable to check that display name right now.';
+      return false;
+    } finally {
+      if (run === displayNameCheckRun) checkingDisplayName = false;
+    }
+  }
+
+  function scheduleDisplayNameCheck() {
+    clearTimeout(displayNameCheckTimer);
+    displayName = cleanDisplayName(displayName, '');
+    displayNameStatus = displayName ? 'Checking display name...' : '';
+    displayNameAvailable = false;
+
+    if (displayName) {
+      displayNameCheckTimer = setTimeout(checkDisplayNameNow, 350);
+    }
+  }
+
+  async function checkUsernameNow() {
+    const slug = createUsernameSlug(username, '');
+    const run = ++usernameCheckRun;
+
+    usernameAvailable = false;
+
+    if (!isCreate || !slug) {
+      usernameStatus = '';
+      return false;
+    }
+
+    if (slug.length < 3) {
+      usernameStatus = 'Use at least 3 characters.';
+      return false;
+    }
+
+    checkingUsername = true;
+    usernameStatus = 'Checking username...';
+
+    try {
+      const available = await checkUserSlugAvailable(slug);
+      if (run !== usernameCheckRun) return false;
+
+      usernameAvailable = available;
+      usernameStatus = available ? `Available: /user/${slug}` : 'That username is already taken.';
+      return available;
+    } catch (error) {
+      if (run === usernameCheckRun) usernameStatus = 'Unable to check that username right now.';
+      return false;
+    } finally {
+      if (run === usernameCheckRun) checkingUsername = false;
+    }
+  }
+
+  function scheduleUsernameCheck() {
+    clearTimeout(usernameCheckTimer);
+    username = createUsernameSlug(username, '');
+    usernameStatus = username ? 'Checking username...' : '';
+    usernameAvailable = false;
+
+    if (username) {
+      usernameCheckTimer = setTimeout(checkUsernameNow, 350);
+    }
+  }
 
   async function submitLogin() {
     if (submitting) return;
@@ -24,19 +126,47 @@
 
     try {
       if (isCreate) {
-        await createAccount(cleanedEmail, password);
-        await saveProfile({
-          ...defaultDashboardProfile,
-          email: cleanedEmail,
-          name: createNameFromEmail(cleanedEmail),
-          type: accountType,
-          userSlug: createSlug(cleanedEmail.split('@')[0], get(profile).userSlug)
-        });
+        const requestedDisplayName = cleanDisplayName(displayName, '');
+        if (!requestedDisplayName || requestedDisplayName.length < 2) {
+          throw new Error('Choose a display name with at least 2 characters.');
+        }
+
+        const requestedSlug = createUsernameSlug(usernameSlug, '');
+        if (!requestedSlug || requestedSlug.length < 3) {
+          throw new Error('Choose a username with at least 3 characters.');
+        }
+
+        const [nameAvailable, slugAvailable] = await Promise.all([checkDisplayNameNow(), checkUsernameNow()]);
+        if (!nameAvailable) throw new Error('That display name is already taken.');
+        if (!slugAvailable) throw new Error('That username is already taken.');
+
+        let accountCreated = false;
+        try {
+          await createAccount(cleanedEmail, password);
+          accountCreated = true;
+          await saveProfile({
+            ...defaultDashboardProfile,
+            email: cleanedEmail,
+            name: requestedDisplayName,
+            type: accountType,
+            username: requestedSlug,
+            userSlug: requestedSlug
+          });
+        } catch (profileError) {
+          if (accountCreated) await deleteCurrentAccount().catch(() => {});
+          throw profileError;
+        }
       } else {
         await signIn(cleanedEmail, password);
       }
 
       email = '';
+      displayName = '';
+      displayNameStatus = '';
+      displayNameAvailable = false;
+      username = '';
+      usernameStatus = '';
+      usernameAvailable = false;
       password = '';
       closeLogin();
       status = '';
@@ -71,6 +201,52 @@
           </label>
 
           {#if isCreate}
+            <label class="field-label">
+              Display name
+              <input
+                class="field"
+                type="text"
+                required
+                minlength="2"
+                maxlength="64"
+                autocomplete="name"
+                placeholder="Your public name"
+                disabled={submitting}
+                value={displayName}
+                on:input={(event) => {
+                  displayName = event.currentTarget.value;
+                  scheduleDisplayNameCheck();
+                }}
+                on:blur={checkDisplayNameNow}
+              />
+              {#if displayNameStatus}
+                <span class:status-good={displayNameAvailable} class="field-help">{displayNameStatus}</span>
+              {/if}
+            </label>
+
+            <label class="field-label">
+              Username
+              <input
+                class="field"
+                type="text"
+                required
+                minlength="3"
+                maxlength="48"
+                autocomplete="username"
+                placeholder="your-name"
+                disabled={submitting}
+                value={username}
+                on:input={(event) => {
+                  username = event.currentTarget.value;
+                  scheduleUsernameCheck();
+                }}
+                on:blur={checkUsernameNow}
+              />
+              {#if usernameStatus}
+                <span class:status-good={usernameAvailable} class="field-help">{usernameStatus}</span>
+              {/if}
+            </label>
+
             <div>
               <p class="section-label">Account type</p>
               <div class="account-type-group">
@@ -99,7 +275,7 @@
             <span>Remember me on this device.</span>
           </label>
 
-          <button class="button button-primary" type="submit" disabled={submitting}>
+          <button class="button button-primary" type="submit" disabled={submitting || (isCreate && (checkingDisplayName || checkingUsername))}>
             {#if submitting}
               <span class="loading-spinner button-spinner" aria-hidden="true"></span>
               {isCreate ? 'Creating...' : 'Signing in...'}

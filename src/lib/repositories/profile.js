@@ -15,12 +15,11 @@ export async function setDashboardProfile(profile) {
   if (isFirebaseConfigured) {
     const user = await getCurrentFirebaseUser();
     if (user) {
-      await firebaseProfile.setDashboardProfile(profile);
-      return;
+      return firebaseProfile.setDashboardProfile(profile);
     }
   }
 
-  localProfile.setDashboardProfile(profile);
+  return localProfile.setDashboardProfile(profile);
 }
 
 export async function getPublicProfileBySlug(slug) {
@@ -30,4 +29,22 @@ export async function getPublicProfileBySlug(slug) {
   }
 
   return localProfile.getPublicProfileBySlug(slug);
+}
+
+export async function checkUserSlugAvailable(slug, currentSlug = '') {
+  if (isFirebaseConfigured) {
+    const user = await getCurrentFirebaseUser();
+    return firebaseProfile.checkUserSlugAvailable(slug, user?.uid || '');
+  }
+
+  return localProfile.checkUserSlugAvailable(slug, currentSlug);
+}
+
+export async function checkDisplayNameAvailable(name, currentNameKey = '') {
+  if (isFirebaseConfigured) {
+    const user = await getCurrentFirebaseUser();
+    return firebaseProfile.checkDisplayNameAvailable(name, user?.uid || '');
+  }
+
+  return localProfile.checkDisplayNameAvailable(name, currentNameKey);
 }

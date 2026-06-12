@@ -205,7 +205,8 @@ export async function persistDeletedAd(ad) {
 
 export async function persistAdLike(adId, liked) {
   const services = await getFirebaseServices();
-  if (!services || typeof adId !== 'string') return;
+  const user = await getCurrentFirebaseUser();
+  if (!services || !user || typeof adId !== 'string') throw new Error('Sign in before liking ads.');
   const { doc, increment, serverTimestamp, updateDoc } = services.firestoreApi;
 
   await updateDoc(doc(services.db, 'ads', adId), {

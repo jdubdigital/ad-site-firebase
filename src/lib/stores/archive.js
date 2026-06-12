@@ -10,6 +10,8 @@ import {
 } from '$lib/repositories/ads';
 import { createMockAds } from '$lib/data/catalog';
 import { isFirebaseConfigured } from '$lib/firebase/client';
+import { signedInEmail } from '$lib/stores/account';
+import { openLogin } from '$lib/stores/ui';
 import { getAdArea, getAdChronology, getAdSearchText } from '$lib/utils/ad-utils';
 
 const batchSize = 12;
@@ -94,6 +96,11 @@ export function setSortMode(mode) {
 }
 
 export async function toggleAdLike(adId) {
+  if (!get(signedInEmail)) {
+    openLogin('signin');
+    return false;
+  }
+
   let nextLikedIds = await getLikedAdIds();
   let nextLiked = false;
 
@@ -117,6 +124,7 @@ export async function toggleAdLike(adId) {
 
   setLikedAdIds(nextLikedIds).catch(() => {});
   persistAdLike(adId, nextLiked).catch(() => {});
+  return true;
 }
 
 export async function submitAd(adValues, file, options = {}) {

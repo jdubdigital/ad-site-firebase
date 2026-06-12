@@ -1,5 +1,7 @@
-import { writable } from 'svelte/store';
+import { get, writable } from 'svelte/store';
 import { getFavoriteUsers, setFavoriteUsers } from '$lib/repositories/favorites';
+import { signedInEmail } from '$lib/stores/account';
+import { openLogin } from '$lib/stores/ui';
 
 export const favoriteUsers = writable([]);
 
@@ -8,6 +10,11 @@ export async function hydrateFavorites() {
 }
 
 export function toggleFavoriteUser(slug) {
+  if (!get(signedInEmail)) {
+    openLogin('signin');
+    return false;
+  }
+
   let nextFavorites = [];
 
   favoriteUsers.update((current) => {
@@ -20,4 +27,5 @@ export function toggleFavoriteUser(slug) {
   });
 
   setFavoriteUsers(nextFavorites).catch(() => {});
+  return true;
 }

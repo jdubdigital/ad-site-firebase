@@ -16,11 +16,4 @@
 
 {#if canViewDashboard}
   <Dashboard />
-{:else}
-  <section class="dashboard-page">
-    <div class="container empty-state">
-      <h1>Checking account</h1>
-      <p class="muted">Confirming your session before opening the dashboard.</p>
-    </div>
-  </section>
 {/if}
