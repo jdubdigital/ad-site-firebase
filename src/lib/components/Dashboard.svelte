@@ -14,6 +14,7 @@
     getAdTypeLabel,
     getAdUserName,
     getAdUserSlug,
+    getMediumLabel,
     getUserBySlug,
     getUserInitials
   } from '$lib/utils/ad-utils';
@@ -348,7 +349,7 @@
               <div class="dashboard-row">
                 <div>
                   <strong>{ad.title}</strong>
-                  <p class="muted">{ad.category} · {ad.medium || 'Web'} · {ad.size} · Posted by {getAdUserName(ad)}</p>
+                  <p class="muted">{ad.category} · {getMediumLabel(ad.medium)} · {ad.size} · Posted by {getAdUserName(ad)}</p>
                 </div>
                 <div class="row-actions">
                   <button class="button button-secondary" type="button" on:click={() => goto(`/user/${getAdUserSlug(ad)}`)}>User</button>
@@ -375,7 +376,7 @@
             <div class="dashboard-row">
               <div>
                 <strong>{ad.title}</strong>
-                <p class="muted">{ad.category} · {ad.medium || 'Web'} · {ad.tags} · {ad.size} · {getAdTypeLabel(ad.type)}</p>
+                <p class="muted">{ad.category} · {getMediumLabel(ad.medium)} · {ad.tags} · {ad.size} · {getAdTypeLabel(ad.type)}</p>
               </div>
               <div class="row-actions post-actions">
                 <span class="muted">{ad.likes} likes</span>

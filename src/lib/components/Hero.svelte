@@ -7,7 +7,7 @@
     <div>
       <h1>Discover the Web's Best Ads</h1>
       <p>
-        A curated archive of advertisements. Browse banner ads, creative campaigns, GIFs, videos, and HTML5 concepts for inspiration.
+        A curated archive of advertisements. Browse banner ads, creative campaigns, GIFs, videos, and programmatic concepts for inspiration.
       </p>
       <div class="hero-actions">
         <a class="button button-primary" href="#gallery">Explore Ads</a>

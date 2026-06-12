@@ -46,11 +46,15 @@ export const extraCategories = categories.slice(8);
 
 export const mediums = ['Web', 'Social', 'Digital', 'Email', 'Billboard', 'Print', 'In-App', 'Other'];
 
+export const mediumLabels = {
+  Digital: 'Digital Signage'
+};
+
 export const adTypes = [
   { value: 'image', label: 'Image' },
   { value: 'gif', label: 'GIF' },
   { value: 'video', label: 'Video' },
-  { value: 'html5', label: 'HTML5' }
+  { value: 'html5', label: 'Programmatic' }
 ];
 
 export const users = [
@@ -79,7 +83,7 @@ export const users = [
     location: 'Austin, TX',
     specialty: 'Motion banners',
     description:
-      'A boutique studio specializing in animated HTML5 concepts, paid social adaptations, and modular banner systems.'
+      'A boutique studio specializing in animated programmatic concepts, paid social adaptations, and modular banner systems.'
   },
   {
     slug: 'avery-chen',

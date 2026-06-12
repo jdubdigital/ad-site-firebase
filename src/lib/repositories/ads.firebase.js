@@ -53,7 +53,7 @@ async function uploadAdAsset(file, onProgress) {
 
 async function requestHtml5Extraction(adId, onProgress) {
   const user = await getCurrentFirebaseUser();
-  if (!user) throw new Error('Sign in before extracting HTML5 ZIP previews.');
+  if (!user) throw new Error('Sign in before extracting programmatic ZIP previews.');
 
   onProgress?.({ stage: 'extract', progress: 0.2 });
 
@@ -68,7 +68,7 @@ async function requestHtml5Extraction(adId, onProgress) {
 
   const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(body.error || 'The HTML5 ZIP could not be extracted.');
+    throw new Error(body.error || 'The programmatic ZIP could not be extracted.');
   }
 
   onProgress?.({ stage: 'extract', progress: 1 });

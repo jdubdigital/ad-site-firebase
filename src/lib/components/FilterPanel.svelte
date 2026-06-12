@@ -6,6 +6,7 @@
   import FormatChips from './FormatChips.svelte';
   import { activeFilters, clearFilters, setFilter, setSearchQuery } from '$lib/stores/archive';
   import { closeFilters, filtersOpen } from '$lib/stores/ui';
+  import { getMediumLabel } from '$lib/utils/ad-utils';
 
   let showAllCategories = false;
   let searchInput;
@@ -87,7 +88,7 @@
             <button class="chip" type="button" aria-pressed={$activeFilters.medium === 'all'} on:click={() => setFilter('medium', 'all')}>All</button>
             {#each mediums as medium}
               <button class="chip" type="button" aria-pressed={$activeFilters.medium === medium} on:click={() => setFilter('medium', medium)}>
-                {medium}
+                {getMediumLabel(medium)}
               </button>
             {/each}
           </div>

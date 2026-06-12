@@ -458,7 +458,7 @@ video {
   justify-content: center;
 }
 
-.toolbar-formats .format-chip-list {
+.toolbar-formats .chip-list {
   flex-wrap: nowrap;
   justify-content: center;
   overflow-x: auto;

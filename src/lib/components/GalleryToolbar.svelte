@@ -1,6 +1,6 @@
 <script>
   import { filteredAds, setSortMode, sortMode, visibleAds } from '$lib/stores/archive';
-  import FormatChips from './FormatChips.svelte';
+  import MediumChips from './MediumChips.svelte';
 </script>
 
 <section class="toolbar">
@@ -11,8 +11,8 @@
       </p>
     </div>
 
-    <div class="toolbar-formats" aria-label="Filter by format">
-      <FormatChips />
+    <div class="toolbar-formats" aria-label="Filter by medium">
+      <MediumChips />
     </div>
 
     <label class="sort-control" aria-label="Sort ads">

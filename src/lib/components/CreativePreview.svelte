@@ -126,7 +126,7 @@
       {#if mediaActive}
         <iframe
           src={ad.htmlPreviewUrl}
-          title={`${ad.title} HTML5 preview`}
+          title={`${ad.title} programmatic preview`}
           sandbox="allow-scripts"
           loading={large ? 'eager' : 'lazy'}
           referrerpolicy="no-referrer"
@@ -144,7 +144,7 @@
   {:else}
     <div class:large-creative-preview={large} class="html5-preview">
       <div class="html5-box">
-        <p class="eyebrow">{large ? 'HTML5 Package' : 'HTML5'}</p>
+        <p class="eyebrow">{large ? 'Programmatic Package' : 'Programmatic'}</p>
         <h3>{ad.title}</h3>
         <p class="muted">Packaged creative · {ad.size}</p>
         {#if ad.htmlPreviewStatus === 'failed'}

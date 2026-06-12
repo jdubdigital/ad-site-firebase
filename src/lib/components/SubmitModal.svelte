@@ -7,7 +7,7 @@
   import { ads, submitAd, updateAd } from '$lib/stores/archive';
   import { profile } from '$lib/stores/profile';
   import { closeSubmit, submitEditingAdId, submitOpen } from '$lib/stores/ui';
-  import { cleanSubmittedValue, getAdTypeLabel } from '$lib/utils/ad-utils';
+  import { cleanSubmittedValue, getAdTypeLabel, getMediumLabel } from '$lib/utils/ad-utils';
 
   const localMaxFileSize = 2500000;
   const firebaseMaxFileSize = 10 * 1024 * 1024;
@@ -115,7 +115,7 @@
       file.type === 'application/x-zip-compressed';
 
     if (!file.type.startsWith('image/') && !file.type.startsWith('video/') && !isZip) {
-      status = 'Please choose an image, GIF, video, or HTML5 ZIP file.';
+      status = 'Please choose an image, GIF, video, or programmatic ZIP file.';
       event.currentTarget.value = '';
       return;
     }
@@ -136,7 +136,7 @@
     pendingFileName = file.name;
 
     if (isZip) {
-      status = 'HTML5 ZIP selected. It will be extracted into a sandboxed preview after submit.';
+      status = 'Programmatic ZIP selected. It will be extracted into a sandboxed preview after submit.';
       return;
     }
 
@@ -170,12 +170,12 @@
     const hasUploadedZip = pendingFileName.toLowerCase().endsWith('.zip');
     const hasZipAsset = hasUploadedZip || cleanedMediaUrl.toLowerCase().endsWith('.zip');
     if (type === 'html5' && !hasZipAsset) {
-      status = 'HTML5 submissions need a .zip upload or .zip media URL.';
+      status = 'Programmatic submissions need a .zip upload or .zip media URL.';
       return;
     }
 
     if (type === 'html5' && isFirebaseConfigured && !pendingFile && !editingAd?.mediaStoragePath) {
-      status = 'Upload the HTML5 ZIP file so the backend can extract it.';
+      status = 'Upload the programmatic ZIP file so the backend can extract it.';
       return;
     }
 
@@ -208,7 +208,7 @@
         prepare: 'Preparing creative',
         upload: 'Uploading asset',
         save: 'Saving ad details',
-        extract: 'Extracting HTML5 preview',
+        extract: 'Extracting programmatic preview',
         done: 'Done'
       };
       const stage = event?.stage || 'prepare';
@@ -222,7 +222,7 @@
       submitting = true;
       handleSubmitProgress({ stage: 'prepare', progress: 0.2 });
       if (type === 'html5' && pendingFile) {
-        status = 'Uploading and extracting the HTML5 ZIP...';
+        status = 'Uploading and extracting the programmatic ZIP...';
       }
 
       if (editingAd) {
@@ -302,7 +302,7 @@
                 Medium
                 <select bind:value={medium} class="select">
                   {#each mediums as item}
-                    <option>{item}</option>
+                    <option value={item}>{getMediumLabel(item)}</option>
                   {/each}
                 </select>
               </label>
@@ -354,7 +354,7 @@
 
               <label class="dropzone">
                 <span class="dropzone-icon">+</span>
-                <strong>Upload image, GIF, video, or HTML5 ZIP</strong>
+                <strong>Upload image, GIF, video, or programmatic ZIP</strong>
                 <span class="muted">{pendingFileName || fileLimitLabel}</span>
                 <input class="hidden-input" type="file" accept="image/*,video/*,.zip,application/zip,application/x-zip-compressed" on:change={handleFile} />
               </label>
@@ -377,7 +377,7 @@
               </div>
               <div>
                 <dt>Creative</dt>
-                <dd>{title.trim() || 'Untitled'} · {medium} · {getAdTypeLabel(type)} · {submitSize}</dd>
+                <dd>{title.trim() || 'Untitled'} · {getMediumLabel(medium)} · {getAdTypeLabel(type)} · {submitSize}</dd>
               </div>
               <div>
                 <dt>Asset</dt>

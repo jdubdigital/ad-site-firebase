@@ -1,4 +1,4 @@
-import { users } from '$lib/data/catalog';
+import { mediumLabels, users } from '$lib/data/catalog';
 
 export function getAdArea(ad) {
   const [width, height] = String(ad.size).split('x').map(Number);
@@ -15,8 +15,13 @@ export function getAdChronology(ad) {
 
 export function getAdTypeLabel(type) {
   if (type === 'gif') return 'GIF';
-  if (type === 'html5') return 'HTML5';
+  if (type === 'html5') return 'Programmatic';
   return type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Image';
+}
+
+export function getMediumLabel(medium) {
+  const value = medium || 'Web';
+  return mediumLabels[value] || value;
 }
 
 export function getUserBySlug(slug) {
@@ -52,6 +57,7 @@ export function getAdSearchText(ad) {
     ad.title,
     ad.category,
     ad.medium,
+    getMediumLabel(ad.medium),
     ad.tags,
     ad.size,
     ad.type,

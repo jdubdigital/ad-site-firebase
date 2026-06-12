@@ -3,7 +3,7 @@
   import { page } from '$app/stores';
   import CreativePreview from '$lib/components/CreativePreview.svelte';
   import { ads, adsReady, toggleAdLike } from '$lib/stores/archive';
-  import { getAdTypeLabel, getAdUserName, getAdUserSlug, getAdUserType } from '$lib/utils/ad-utils';
+  import { getAdTypeLabel, getAdUserName, getAdUserSlug, getAdUserType, getMediumLabel } from '$lib/utils/ad-utils';
 
   $: adId = decodeURIComponent($page.params.id || '');
   $: ad = $ads.find((item) => String(item.id) === adId);
@@ -12,7 +12,7 @@
     ? [
         ['User', `${getAdUserName(ad)} · ${getAdUserType(ad)}`],
         ['Category', ad.category],
-        ['Medium', ad.medium || 'Web'],
+        ['Medium', getMediumLabel(ad.medium)],
         ['Format', getAdTypeLabel(ad.type)],
         ['Size', ad.size],
         ['Tags', ad.tags]
