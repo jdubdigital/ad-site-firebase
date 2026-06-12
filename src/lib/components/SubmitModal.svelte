@@ -20,7 +20,7 @@
   let customWidth = '';
   let customHeight = '';
   let tags = '';
-  let mediaUrl = '';
+  let existingMediaUrl = '';
   let notes = '';
   let rights = false;
   let transparency = false;
@@ -35,7 +35,7 @@
   $: editingAd = $submitEditingAdId ? $ads.find((ad) => ad.id === $submitEditingAdId) : null;
   $: isEditing = Boolean(editingAd);
   $: submitSize = size === 'custom' && customWidth && customHeight ? `${customWidth}x${customHeight}` : size;
-  $: assetSummary = pendingFileName || mediaUrl.trim() || 'Demo placeholder until media is provided';
+  $: assetSummary = pendingFileName || (isEditing && existingMediaUrl ? 'Current uploaded asset' : 'Upload a creative file');
   $: fileLimitLabel = isFirebaseConfigured ? 'Max 10 MB' : 'Max 2.5 MB for local browser storage';
 
   function setSizeValue(nextSize) {
@@ -59,7 +59,7 @@
     type = ad.type || 'image';
     setSizeValue(ad.size || '300x250');
     tags = ad.tags || '';
-    mediaUrl = ad.mediaUrl && !ad.mediaUrl.startsWith('data:') ? ad.mediaUrl : '';
+    existingMediaUrl = ad.mediaUrl || '';
     notes = ad.notes || '';
     pendingMediaData = ad.mediaUrl && ad.mediaUrl.startsWith('data:') ? ad.mediaUrl : '';
     pendingFile = null;
@@ -83,7 +83,7 @@
     customWidth = '';
     customHeight = '';
     tags = '';
-    mediaUrl = '';
+    existingMediaUrl = '';
     notes = '';
     rights = false;
     transparency = false;
@@ -166,11 +166,11 @@
       return;
     }
 
-    const cleanedMediaUrl = cleanSubmittedValue(mediaUrl);
     const hasUploadedZip = pendingFileName.toLowerCase().endsWith('.zip');
-    const hasZipAsset = hasUploadedZip || cleanedMediaUrl.toLowerCase().endsWith('.zip');
+    const hasExistingZipAsset = isEditing && (editingAd?.mediaStoragePath || existingMediaUrl.toLowerCase().endsWith('.zip'));
+    const hasZipAsset = hasUploadedZip || hasExistingZipAsset;
     if (type === 'html5' && !hasZipAsset) {
-      status = 'Programmatic submissions need a .zip upload or .zip media URL.';
+      status = 'Programmatic submissions need a .zip upload.';
       return;
     }
 
@@ -189,7 +189,7 @@
       userSlug: currentProfile.userSlug,
       userName: cleanSubmittedValue(currentProfile.name),
       userType: cleanSubmittedValue(currentProfile.type),
-      mediaUrl: pendingMediaData || cleanedMediaUrl,
+      mediaUrl: pendingMediaData || existingMediaUrl,
       mediaFileName: cleanSubmittedValue(pendingFileName),
       notes: cleanSubmittedValue(notes),
       type
@@ -244,7 +244,7 @@
     } catch (error) {
       submitProgress = 0;
       submitPhase = '';
-      status = error?.message || 'The creative file is too large for browser storage. Try a smaller file or use a media URL.';
+      status = error?.message || 'The creative file is too large for browser storage. Try a smaller file.';
     } finally {
       submitting = false;
     }
@@ -269,7 +269,7 @@
       <div class="modal-header">
         <div>
           <p class="eyebrow">Submit creative</p>
-          <h2 id="submit-title" class="modal-title">{isEditing ? 'Edit ad' : 'Add an ad to the archive'}</h2>
+          <h2 id="submit-title" class="modal-title">{isEditing ? 'Edit creative' : 'Add to the archive'}</h2>
           <p class="muted">
             {isEditing
               ? 'Update the creative details, metadata, or media for this post.'
@@ -347,11 +347,6 @@
           <section class="form-section">
             <h3>Creative asset</h3>
             <div class="field-grid">
-              <label class="field-label">
-                Media URL
-                <input bind:value={mediaUrl} class="field" type="url" placeholder="https://example.com/ad.jpg" />
-              </label>
-
               <label class="dropzone">
                 <span class="dropzone-icon">+</span>
                 <strong>Upload image, GIF, video, or programmatic ZIP</strong>
@@ -421,7 +416,7 @@
               <span class="loading-spinner button-spinner" aria-hidden="true"></span>
               {isEditing ? 'Saving...' : 'Submitting...'}
             {:else}
-              {isEditing ? 'Save changes' : 'Submit ad'}
+              {isEditing ? 'Save changes' : 'Submit'}
             {/if}
           </button>
           <button class="button button-secondary" type="button" disabled={submitting} on:click={resetForm}>

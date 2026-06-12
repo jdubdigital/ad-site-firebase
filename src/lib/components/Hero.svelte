@@ -11,7 +11,7 @@
       </p>
       <div class="hero-actions">
         <a class="button button-primary" href="#gallery">Explore Ads</a>
-        <button class="button button-secondary" type="button" on:click={() => goto('/submit')}>Submit Your Ad</button>
+        <button class="button button-secondary" type="button" on:click={() => goto('/submit')}>Submit</button>
       </div>
     </div>
   </div>

@@ -4,6 +4,7 @@
   import Copy from '@lucide/svelte/icons/copy';
   import Edit3 from '@lucide/svelte/icons/edit-3';
   import Trash2 from '@lucide/svelte/icons/trash-2';
+  import { getPublicProfileBySlug } from '$lib/repositories/profile';
   import { signedInEmail, signOut } from '$lib/stores/account';
   import { ads, deleteAd, hydrateAds } from '$lib/stores/archive';
   import { favoriteUsers } from '$lib/stores/favorites';
@@ -39,6 +40,8 @@
   let copyStatus = '';
   let deleteStatus = '';
   let deletingAdIds = new Set();
+  let favoriteUserDetails = [];
+  let favoriteUserDetailsRequest = 0;
 
   const embedScriptOpen = '<script>';
   const embedScriptClose = '</scr' + 'ipt>';
@@ -113,7 +116,31 @@
     : '';
   $: myAds = $ads.filter((ad) => getAdUserSlug(ad) === currentProfile.userSlug);
   $: likedAds = $ads.filter((ad) => ad.liked).sort((a, b) => getAdChronology(b) - getAdChronology(a));
-  $: favoriteUserDetails = $favoriteUsers.map((slug) => getUserBySlug(slug)).filter(Boolean);
+  async function loadFavoriteUserDetails(slugs) {
+    const request = ++favoriteUserDetailsRequest;
+    const uniqueSlugs = [...new Set(slugs)].filter(Boolean);
+
+    const users = await Promise.all(
+      uniqueSlugs.map(async (slug) => {
+        const staticUser = getUserBySlug(slug);
+        if (staticUser) return staticUser;
+
+        const publicProfile = await getPublicProfileBySlug(slug);
+        return publicProfile
+          ? {
+              ...publicProfile,
+              slug: publicProfile.userSlug || slug
+            }
+          : null;
+      })
+    );
+
+    if (request === favoriteUserDetailsRequest) {
+      favoriteUserDetails = users.filter(Boolean);
+    }
+  }
+
+  $: loadFavoriteUserDetails($favoriteUsers);
   $: if (currentProfile) {
     displayName = displayName || currentProfile.name;
     username = username || currentProfile.username || currentProfile.userSlug;
@@ -349,7 +376,7 @@
     </div>
     <div class="hero-actions">
       <a class="button button-secondary" href="/">View archive</a>
-      <button class="button button-primary" type="button" on:click={() => goto('/submit')}>Submit ad</button>
+      <button class="button button-primary" type="button" on:click={() => goto('/submit')}>Submit</button>
     </div>
   </div>
 </section>

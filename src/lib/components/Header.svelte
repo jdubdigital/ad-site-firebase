@@ -6,8 +6,11 @@
   import Search from '@lucide/svelte/icons/search';
   import Sun from '@lucide/svelte/icons/sun';
   import { signedInEmail } from '$lib/stores/account';
+  import { profile } from '$lib/stores/profile';
   import { openFilters, openLogin } from '$lib/stores/ui';
   import { setThemeMode, themeMode } from '$lib/stores/theme';
+
+  $: accountLabel = $profile.username || $profile.userSlug || $signedInEmail.split('@')[0];
 </script>
 
 <header class="site-header">
@@ -67,7 +70,7 @@
           type="button"
           on:click={() => ($signedInEmail ? goto('/dashboard') : openLogin('signin'))}
         >
-          {$signedInEmail ? $signedInEmail.split('@')[0] : 'Sign in'}
+          {$signedInEmail ? accountLabel : 'Sign in'}
         </button>
         {#if !$signedInEmail}
           <button class="button button-primary" type="button" on:click={() => openLogin('create')}>Create account</button>
