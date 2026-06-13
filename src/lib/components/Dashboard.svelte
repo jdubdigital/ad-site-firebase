@@ -392,10 +392,15 @@
             {getUserInitials(currentProfile.name)}
           {/if}
         </div>
-        <div>
-          <div class="user-name">
-            <h2>{currentProfile.name}</h2>
-            <span class="badge">{currentProfile.type}</span>
+        <div class="profile-card-body">
+          <div class="profile-card-header">
+            <div class="user-name">
+              <h2>{currentProfile.name}</h2>
+              <span class="badge">{currentProfile.type}</span>
+            </div>
+            <a class="button button-secondary profile-view-button" href={`/user/${encodeURIComponent(currentProfile.userSlug)}`}>
+              View public profile
+            </a>
           </div>
           <p class="muted">{$signedInEmail || currentProfile.email}</p>
           <p>{currentProfile.description}</p>

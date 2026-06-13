@@ -44,7 +44,7 @@ export const categories = [
 export const primaryCategories = categories.slice(0, 8);
 export const extraCategories = categories.slice(8);
 
-export const mediums = ['Web', 'Social', 'Digital', 'Print', 'In-App', 'Other'];
+export const mediums = ['In-App', 'Web', 'Social', 'Digital', 'Print', 'Other'];
 
 export const mediumLabels = {
   Digital: 'Digital Signage'
