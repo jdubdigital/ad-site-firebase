@@ -1,5 +1,16 @@
 <script>
   import { goto } from '$app/navigation';
+  import { signedInEmail } from '$lib/stores/account';
+  import { openLogin } from '$lib/stores/ui';
+
+  function handleSubmitClick() {
+    if ($signedInEmail) {
+      goto('/submit');
+      return;
+    }
+
+    openLogin('signin');
+  }
 </script>
 
 <section class="hero">
@@ -11,7 +22,7 @@
       </p>
       <div class="hero-actions">
         <a class="button button-primary" href="#gallery">Explore Ads</a>
-        <button class="button button-secondary" type="button" on:click={() => goto('/submit')}>Submit Your Own</button>
+        <button class="button button-secondary" type="button" on:click={handleSubmitClick}>Submit Your Own</button>
       </div>
     </div>
   </div>
