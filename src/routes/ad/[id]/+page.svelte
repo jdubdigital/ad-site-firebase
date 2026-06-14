@@ -4,6 +4,7 @@
   import CreativePreview from '$lib/components/CreativePreview.svelte';
   import { signedInEmail } from '$lib/stores/account';
   import { ads, adsReady, toggleAdLike } from '$lib/stores/archive';
+  import { returnToArchive } from '$lib/utils/archive-scroll';
   import { getAdTypeLabel, getAdUserName, getAdUserSlug, getAdUserType, getMediumLabel } from '$lib/utils/ad-utils';
 
   $: adId = decodeURIComponent($page.params.id || '');
@@ -27,7 +28,7 @@
 
 <section class="ad-detail-page">
   <div class="container">
-    <button class="button button-secondary ad-detail-back" type="button" on:click={() => goto('/')}>Back to archive</button>
+    <button class="button button-secondary ad-detail-back" type="button" on:click={returnToArchive}>Back to archive</button>
 
     {#if ad}
       <div class="ad-detail-layout">
@@ -84,7 +85,7 @@
       <div class="empty-state">
         <h1>Ad not found</h1>
         <p class="muted">This creative does not exist in the archive.</p>
-        <button class="button button-primary" type="button" on:click={() => goto('/')}>Back to archive</button>
+        <button class="button button-primary" type="button" on:click={returnToArchive}>Back to archive</button>
       </div>
     {/if}
   </div>

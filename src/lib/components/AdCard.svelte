@@ -1,5 +1,6 @@
 <script>
   import { goto } from '$app/navigation';
+  import { rememberArchiveScroll } from '$lib/utils/archive-scroll';
   import CreativePreview from './CreativePreview.svelte';
 
   export let ad;
@@ -8,13 +9,14 @@
   $: adPath = `/ad/${encodeURIComponent(String(ad.id))}`;
 
   function openAdPage() {
+    rememberArchiveScroll();
     goto(adPath);
   }
 </script>
 
 <article class="ad-card">
   {#if externalLinks}
-    <a class="creative-button" href={adPath} target="_blank" rel="noreferrer" aria-label={`Open ${ad.title}`}>
+    <a class="creative-button" href={adPath} target="_blank" rel="noreferrer" aria-label={`Open ${ad.title}`} on:click={rememberArchiveScroll}>
       <div class="creative-preview">
         <CreativePreview {ad} on:mediaready />
       </div>

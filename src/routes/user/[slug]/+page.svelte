@@ -1,6 +1,5 @@
 <script>
   import { browser } from '$app/environment';
-  import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import MasonryGrid from '$lib/components/MasonryGrid.svelte';
   import { getPublicProfileBySlug } from '$lib/repositories/profile';
@@ -8,6 +7,7 @@
   import { ads } from '$lib/stores/archive';
   import { favoriteUsers, toggleFavoriteUser } from '$lib/stores/favorites';
   import { profile } from '$lib/stores/profile';
+  import { returnToArchive } from '$lib/utils/archive-scroll';
   import { getAdChronology, getAdUserName, getAdUserSlug, getAdUserType, getUserBySlug, getUserInitials } from '$lib/utils/ad-utils';
 
   export let data = {
@@ -72,7 +72,7 @@
 {#if user}
   <section class="user-hero">
     <div class="container">
-      <button class="button button-secondary" type="button" on:click={() => goto('/')}>← Back to archive</button>
+      <button class="button button-secondary" type="button" on:click={returnToArchive}>Back to archive</button>
 
       <div class="user-profile">
         <div class="profile-row">
@@ -137,7 +137,7 @@
     <div class="container empty-state">
       <h1>User not found</h1>
       <p class="muted">The public profile you opened does not exist yet.</p>
-      <button class="button button-primary" type="button" on:click={() => goto('/')}>Back to archive</button>
+      <button class="button button-primary" type="button" on:click={returnToArchive}>Back to archive</button>
     </div>
   </section>
 {/if}
