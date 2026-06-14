@@ -17,6 +17,13 @@
     if (event.key === 'Escape') closeFilters();
   }
 
+  function onSearchKeydown(event) {
+    if (event.key !== 'Enter') return;
+
+    event.preventDefault();
+    closeFilters();
+  }
+
   onMount(() => {
     document.addEventListener('keydown', onKeydown);
     return () => document.removeEventListener('keydown', onKeydown);
@@ -50,6 +57,7 @@
             placeholder="Search ads, brands, categories..."
             value={$activeFilters.query}
             on:input={(event) => setSearchQuery(event.currentTarget.value)}
+            on:keydown={onSearchKeydown}
           />
         </div>
       </div>

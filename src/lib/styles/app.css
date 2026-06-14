@@ -736,6 +736,7 @@ video {
   position: fixed;
   inset: 5.5rem 1rem auto;
   z-index: 45;
+  pointer-events: none;
 }
 
 .filter-box,
@@ -754,6 +755,7 @@ video {
   margin-inline: auto;
   overflow: auto;
   padding: 1.25rem;
+  pointer-events: auto;
   backdrop-filter: blur(12px);
 }
 
