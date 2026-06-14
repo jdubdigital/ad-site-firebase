@@ -222,6 +222,7 @@
               {#if usernameStatus}
                 <span class:status-good={usernameAvailable} class="field-help">{usernameStatus}</span>
               {/if}
+              <span class="field-help">Cannot be changed later.</span>
             </label>
 
             <label class="field-label">
