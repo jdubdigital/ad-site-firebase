@@ -14,6 +14,7 @@
   let mediaInViewport = large;
   let mediaReady = false;
   let mediaKey = '';
+  let viewportHeight = 0;
 
   $: src = ad.mediaUrl || getCreativeFallback(ad);
   $: [creativeWidth, creativeHeight] = String(ad.size || '300x250')
@@ -38,10 +39,25 @@
 
   function resizeFrame() {
     if (!frameShell) return;
-    const availableWidth = large
-      ? frameShell.parentElement?.clientWidth || frameShell.clientWidth || intrinsicWidth
-      : frameShell.clientWidth || intrinsicWidth;
-    frameScale = Math.min(1, availableWidth / intrinsicWidth);
+    const parent = frameShell.parentElement;
+    let availableWidth = frameShell.clientWidth || intrinsicWidth;
+
+    if (large && parent) {
+      const parentStyle = window.getComputedStyle(parent);
+      const parentPadding =
+        Number.parseFloat(parentStyle.paddingLeft || '0') + Number.parseFloat(parentStyle.paddingRight || '0');
+      availableWidth = Math.max(1, parent.clientWidth - parentPadding);
+    }
+
+    const availableHeight = large && viewportHeight ? Math.max(1, Math.round(viewportHeight * 0.72)) : intrinsicHeight;
+    const widthScale = availableWidth / intrinsicWidth;
+    const heightScale = large ? availableHeight / intrinsicHeight : 1;
+    frameScale = Math.min(1, widthScale, heightScale);
+  }
+
+  function handleViewportResize() {
+    viewportHeight = window.innerHeight || 0;
+    resizeFrame();
   }
 
   $: if (ad?.htmlPreviewUrl) {
@@ -102,12 +118,19 @@
   }
 
   onMount(() => {
-    resizeFrame();
-    if (!frameShell || typeof ResizeObserver === 'undefined') return undefined;
+    handleViewportResize();
+    window.addEventListener('resize', handleViewportResize);
+
+    if (!frameShell || typeof ResizeObserver === 'undefined') {
+      return () => window.removeEventListener('resize', handleViewportResize);
+    }
 
     const observer = new ResizeObserver(resizeFrame);
     observer.observe(frameShell);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', handleViewportResize);
+    };
   });
 </script>
 

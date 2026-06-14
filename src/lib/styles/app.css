@@ -1584,6 +1584,21 @@ video {
     padding: 0.75rem;
   }
 
+  .ad-detail-preview .creative-media-shell.is-large {
+    width: 100%;
+  }
+
+  .ad-detail-preview .creative-media-shell.is-large > img,
+  .ad-detail-preview .creative-media-shell.is-large > video,
+  .ad-detail-preview img,
+  .ad-detail-preview video {
+    width: 100%;
+    max-width: 100%;
+    max-height: none;
+    height: auto;
+    object-fit: contain;
+  }
+
   .ad-detail-panel {
     padding: 0.95rem;
   }
