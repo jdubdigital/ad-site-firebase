@@ -274,7 +274,16 @@ video {
   font-weight: 650;
 }
 
-.nav-links a:hover {
+.nav-link-button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+
+.nav-links a:hover,
+.nav-link-button:hover {
   color: var(--accent);
 }
 
@@ -1031,6 +1040,7 @@ video {
 .large-creative-preview img,
 .large-creative-preview video {
   width: auto;
+  max-width: 100%;
   max-height: 60vh;
   object-fit: contain;
 }
@@ -1146,10 +1156,12 @@ video {
   display: grid;
   gap: 1.25rem;
   align-items: start;
+  min-width: 0;
 }
 
 .ad-detail-preview,
 .ad-detail-panel {
+  min-width: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-soft);
@@ -1159,8 +1171,17 @@ video {
   display: grid;
   min-height: 22rem;
   place-items: center;
-  overflow: auto;
+  max-width: 100%;
+  overflow: hidden;
   padding: 1.25rem;
+}
+
+.ad-detail-preview .creative-preview,
+.ad-detail-preview .creative-media-shell,
+.ad-detail-preview .html5-frame-shell,
+.ad-detail-preview .html5-preview {
+  max-width: 100%;
+  min-width: 0;
 }
 
 .ad-detail-preview img,

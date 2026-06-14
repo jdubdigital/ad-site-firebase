@@ -11,6 +11,15 @@
   import { setThemeMode, themeMode } from '$lib/stores/theme';
 
   $: accountLabel = $profile.username || $profile.userSlug || $signedInEmail.split('@')[0];
+
+  function handleSubmitClick() {
+    if ($signedInEmail) {
+      goto('/submit');
+      return;
+    }
+
+    openLogin('signin');
+  }
 </script>
 
 <header class="site-header">
@@ -27,7 +36,7 @@
     <nav class="nav" aria-label="Main navigation">
       <div class="nav-links">
         <a href="/">Home</a>
-        <a href="/submit">Submit</a>
+        <button class="nav-link-button" type="button" on:click={handleSubmitClick}>Submit</button>
         <a href="/#gallery">About</a>
       </div>
 
@@ -81,7 +90,7 @@
         class="icon-button mobile-only"
         type="button"
         aria-label={$signedInEmail ? 'Open dashboard' : 'Open account login'}
-        on:click={() => ($signedInEmail ? goto('/dashboard') : openLogin('create'))}
+        on:click={() => ($signedInEmail ? goto('/dashboard') : openLogin('signin'))}
       >
         <CircleUserRound size={21} strokeWidth={2.15} aria-hidden="true" />
       </button>

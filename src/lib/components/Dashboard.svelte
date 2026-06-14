@@ -8,7 +8,7 @@
   import { signedInEmail, signOut } from '$lib/stores/account';
   import { ads, deleteAd, hydrateAds } from '$lib/stores/archive';
   import { favoriteUsers } from '$lib/stores/favorites';
-  import { checkDisplayNameAvailable, checkUserSlugAvailable, profile, saveProfile } from '$lib/stores/profile';
+  import { checkDisplayNameAvailable, profile, saveProfile } from '$lib/stores/profile';
   import { openSubmit } from '$lib/stores/ui';
   import {
     getAdChronology,
@@ -19,7 +19,7 @@
     getUserBySlug,
     getUserInitials
   } from '$lib/utils/ad-utils';
-  import { cleanDisplayName, createDisplayNameKey, createUsernameSlug } from '$lib/utils/slug';
+  import { cleanDisplayName, createDisplayNameKey } from '$lib/utils/slug';
 
   let displayName = '';
   let displayNameStatus = '';
@@ -31,12 +31,7 @@
   let accountType = 'Brand';
   let description = '';
   let saveStatus = '';
-  let usernameStatus = '';
-  let usernameAvailable = true;
-  let checkingUsername = false;
   let savingProfile = false;
-  let usernameCheckTimer;
-  let usernameCheckRun = 0;
   let copyStatus = '';
   let deleteStatus = '';
   let deletingAdIds = new Set();
@@ -203,53 +198,6 @@
     }
   }
 
-  async function checkUsernameNow() {
-    const requestedSlug = createUsernameSlug(username, '');
-    const currentSlug = currentProfile.userSlug;
-    const run = ++usernameCheckRun;
-
-    usernameAvailable = false;
-
-    if (!requestedSlug || requestedSlug.length < 3) {
-      usernameStatus = 'Use at least 3 characters.';
-      return false;
-    }
-
-    if (requestedSlug === currentSlug) {
-      usernameAvailable = true;
-      usernameStatus = `Current username: /user/${requestedSlug}`;
-      return true;
-    }
-
-    checkingUsername = true;
-    usernameStatus = 'Checking username...';
-
-    try {
-      const available = await checkUserSlugAvailable(requestedSlug, currentSlug);
-      if (run !== usernameCheckRun) return false;
-
-      usernameAvailable = available;
-      usernameStatus = available ? `Available: /user/${requestedSlug}` : 'That username is already taken.';
-      return available;
-    } catch (error) {
-      if (run === usernameCheckRun) usernameStatus = 'Unable to check that username right now.';
-      return false;
-    } finally {
-      if (run === usernameCheckRun) checkingUsername = false;
-    }
-  }
-
-  function scheduleUsernameCheck() {
-    clearTimeout(usernameCheckTimer);
-    username = createUsernameSlug(username, '');
-    usernameAvailable = username === currentProfile.userSlug;
-    usernameStatus = username ? 'Checking username...' : '';
-
-    if (username) {
-      usernameCheckTimer = setTimeout(checkUsernameNow, 350);
-    }
-  }
-
   async function saveDashboardProfile() {
     if (savingProfile) return;
     saveStatus = '';
@@ -257,15 +205,11 @@
 
     try {
       const requestedName = cleanDisplayName(displayName, '');
-      const requestedSlug = createUsernameSlug(username, '');
-      const [nameAvailable, slugAvailable] = await Promise.all([checkDisplayNameNow(), checkUsernameNow()]);
+      const nameAvailable = await checkDisplayNameNow();
       if (!nameAvailable) throw new Error('Choose an available display name before saving.');
-      if (!slugAvailable) throw new Error('Choose an available username before saving.');
 
       await saveProfile({
         name: requestedName,
-        username: requestedSlug,
-        userSlug: requestedSlug,
         type: accountType,
         description: description.trim() || currentProfile.description
       });
@@ -434,6 +378,18 @@
             </div>
 
             <label class="field-label">
+              Username
+              <input
+                class="field"
+                type="text"
+                readonly
+                autocomplete="username"
+                value={username}
+              />
+              <span class="field-help">Username is set when the account is created and cannot be changed.</span>
+            </label>
+
+            <label class="field-label">
               Display name
               <input
                 class="field"
@@ -454,26 +410,6 @@
             </label>
 
             <label class="field-label">
-              Username
-              <input
-                class="field"
-                type="text"
-                minlength="3"
-                maxlength="48"
-                autocomplete="username"
-                value={username}
-                on:input={(event) => {
-                  username = event.currentTarget.value;
-                  scheduleUsernameCheck();
-                }}
-                on:blur={checkUsernameNow}
-              />
-              {#if usernameStatus}
-                <span class:status-good={usernameAvailable} class="field-help">{usernameStatus}</span>
-              {/if}
-            </label>
-
-            <label class="field-label">
               Account type
               <select bind:value={accountType} class="select">
                 <option>Brand</option>
@@ -490,7 +426,7 @@
             <button
               class="button button-primary"
               type="button"
-              disabled={savingProfile || checkingDisplayName || checkingUsername}
+              disabled={savingProfile || checkingDisplayName}
               on:click={saveDashboardProfile}
             >
               {savingProfile ? 'Saving...' : 'Save profile'}

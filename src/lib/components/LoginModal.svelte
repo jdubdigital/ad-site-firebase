@@ -202,29 +202,6 @@
 
           {#if isCreate}
             <label class="field-label">
-              Display name
-              <input
-                class="field"
-                type="text"
-                required
-                minlength="2"
-                maxlength="64"
-                autocomplete="name"
-                placeholder="Your public name"
-                disabled={submitting}
-                value={displayName}
-                on:input={(event) => {
-                  displayName = event.currentTarget.value;
-                  scheduleDisplayNameCheck();
-                }}
-                on:blur={checkDisplayNameNow}
-              />
-              {#if displayNameStatus}
-                <span class:status-good={displayNameAvailable} class="field-help">{displayNameStatus}</span>
-              {/if}
-            </label>
-
-            <label class="field-label">
               Username
               <input
                 class="field"
@@ -244,6 +221,29 @@
               />
               {#if usernameStatus}
                 <span class:status-good={usernameAvailable} class="field-help">{usernameStatus}</span>
+              {/if}
+            </label>
+
+            <label class="field-label">
+              Display name
+              <input
+                class="field"
+                type="text"
+                required
+                minlength="2"
+                maxlength="64"
+                autocomplete="name"
+                placeholder="Your public name"
+                disabled={submitting}
+                value={displayName}
+                on:input={(event) => {
+                  displayName = event.currentTarget.value;
+                  scheduleDisplayNameCheck();
+                }}
+                on:blur={checkDisplayNameNow}
+              />
+              {#if displayNameStatus}
+                <span class:status-good={displayNameAvailable} class="field-help">{displayNameStatus}</span>
               {/if}
             </label>
 

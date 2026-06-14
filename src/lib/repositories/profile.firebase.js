@@ -159,16 +159,16 @@ export async function setDashboardProfile(profile) {
     const currentProfile = profileSnapshot.exists()
       ? cleanProfileDoc(profileSnapshot.data(), user.uid, user.email)
       : cleanProfileDoc({}, user.uid, user.email);
-    const oldUsernameRef =
-      currentProfile.userSlug && currentProfile.userSlug !== nextProfile.userSlug
-        ? doc(services.db, 'usernames', currentProfile.userSlug)
-        : null;
+
+    if (profileSnapshot.exists() && currentProfile.userSlug !== nextProfile.userSlug) {
+      throw new Error('Username cannot be changed after account creation.');
+    }
+
     const oldDisplayNameRef =
       currentProfile.displayNameKey && currentProfile.displayNameKey !== nextProfile.displayNameKey
         ? doc(services.db, 'displayNames', currentProfile.displayNameKey)
         : null;
     const usernameSnapshot = await transaction.get(usernameRef);
-    const oldUsernameSnapshot = oldUsernameRef ? await transaction.get(oldUsernameRef) : null;
     const displayNameSnapshot = await transaction.get(displayNameRef);
     const oldDisplayNameSnapshot = oldDisplayNameRef ? await transaction.get(oldDisplayNameRef) : null;
 
@@ -178,10 +178,6 @@ export async function setDashboardProfile(profile) {
 
     if (displayNameSnapshot.exists() && displayNameSnapshot.data().ownerUid !== user.uid) {
       throw new Error('That display name is already taken.');
-    }
-
-    if (oldUsernameRef && oldUsernameSnapshot?.exists() && oldUsernameSnapshot.data().ownerUid === user.uid) {
-      transaction.delete(oldUsernameRef);
     }
 
     if (oldDisplayNameRef && oldDisplayNameSnapshot?.exists() && oldDisplayNameSnapshot.data().ownerUid === user.uid) {

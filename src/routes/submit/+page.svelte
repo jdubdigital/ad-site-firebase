@@ -1,10 +1,17 @@
 <script>
-  import { onMount } from 'svelte';
-  import { openSubmit } from '$lib/stores/ui';
+  import { browser } from '$app/environment';
+  import { goto } from '$app/navigation';
+  import { authReady, signedInEmail } from '$lib/stores/account';
+  import { openLogin, openSubmit } from '$lib/stores/ui';
 
-  onMount(() => {
+  $: if (browser && $authReady && $signedInEmail) {
     openSubmit();
-  });
+  }
+
+  $: if (browser && $authReady && !$signedInEmail) {
+    openLogin('signin');
+    goto('/');
+  }
 </script>
 
 <svelte:head>
