@@ -1465,6 +1465,7 @@ video {
 }
 
 .live-preview-page {
+  overflow-x: hidden;
   padding-block: 2rem 4rem;
 }
 
@@ -1485,6 +1486,7 @@ video {
 .publisher-sim {
   display: grid;
   gap: 1.25rem;
+  min-width: 0;
 }
 
 .publisher-band,
@@ -1520,6 +1522,7 @@ video {
   grid-template-columns: minmax(0, 1fr) minmax(15rem, 20rem);
   gap: 1.25rem;
   align-items: start;
+  min-width: 0;
 }
 
 .publisher-story {
@@ -1541,6 +1544,7 @@ video {
   display: grid;
   gap: 0.5rem;
   justify-items: center;
+  min-width: 0;
   margin-block: 1.35rem;
   border-block: 1px solid var(--border);
   padding-block: 1.35rem;
@@ -1556,9 +1560,10 @@ video {
 
 .live-ad-slot {
   display: grid;
+  width: min(100%, var(--creative-width, 100%));
   max-width: 100%;
   place-items: center;
-  overflow: auto;
+  overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
   border-radius: var(--radius);
   background: repeating-linear-gradient(
@@ -1572,12 +1577,20 @@ video {
   padding: 0;
 }
 
+.live-ad-frame-shell {
+  position: relative;
+  max-width: 100%;
+  overflow: hidden;
+  line-height: 0;
+}
+
 .live-ad-slot iframe {
   display: block;
   max-width: none;
   flex: 0 0 auto;
   border: 0;
   background: white;
+  transform-origin: top left;
 }
 
 .publisher-sidebar {

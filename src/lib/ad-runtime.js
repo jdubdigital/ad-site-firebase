@@ -16,15 +16,20 @@ function getVisiblePercent(rect, viewportWidth, viewportHeight) {
   return clamp((visibleWidth * visibleHeight * 100) / totalArea, 0, 100);
 }
 
-function createRuntimePayload(slot, visibleTimeMs) {
+function createRuntimePayload(slot, visibleTimeMs, options = {}) {
   const rect = slot.getBoundingClientRect();
   const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
   const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
   const visiblePercent = getVisiblePercent(rect, viewportWidth, viewportHeight);
+  const scrollY = window.scrollY || window.pageYOffset || 0;
+  const scrollX = window.scrollX || window.pageXOffset || 0;
 
   return {
     type: runtimeUpdateType,
-    scrollY: window.scrollY || window.pageYOffset || 0,
+    scrollX,
+    scrollY,
+    scrollTop: scrollY,
+    scrollLeft: scrollX,
     viewportWidth,
     viewportHeight,
     pageWidth: Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth || 0),
@@ -35,6 +40,11 @@ function createRuntimePayload(slot, visibleTimeMs) {
     adRight: rect.right,
     adWidth: rect.width,
     adHeight: rect.height,
+    creativeWidth: options.creativeWidth || rect.width,
+    creativeHeight: options.creativeHeight || rect.height,
+    creativeScale: options.creativeScale || 1,
+    adPageTop: rect.top + scrollY,
+    adPageLeft: rect.left + scrollX,
     visiblePercent,
     isVisible: visiblePercent > 0,
     visibleTimeMs,
@@ -42,7 +52,7 @@ function createRuntimePayload(slot, visibleTimeMs) {
   };
 }
 
-export function createAdRuntime({ iframe, slot, onUpdate, onLog, onImpression, onBridgeReady }) {
+export function createAdRuntime({ iframe, slot, creativeWidth, creativeHeight, creativeScale, onUpdate, onLog, onImpression, onBridgeReady }) {
   let frame = iframe;
   let adSlot = slot;
   let raf = 0;
@@ -78,7 +88,11 @@ export function createAdRuntime({ iframe, slot, onUpdate, onLog, onImpression, o
     if (destroyed || !frame || !adSlot) return;
 
     const now = Date.now();
-    const payload = createRuntimePayload(adSlot, visibleTimeMs);
+    const payload = createRuntimePayload(adSlot, visibleTimeMs, {
+      creativeWidth,
+      creativeHeight,
+      creativeScale
+    });
 
     if (payload.isVisible) {
       if (lastVisibleTick) visibleTimeMs += now - lastVisibleTick;

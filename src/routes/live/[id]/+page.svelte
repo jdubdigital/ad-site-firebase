@@ -17,6 +17,8 @@
   let impressionFired = false;
   let bridgeReady = false;
   let bridgeInfo = null;
+  let slotAvailableWidth = 0;
+  let resizeObserver;
 
   $: adId = decodeURIComponent($page.params.id || '');
   $: ad = $ads.find((item) => String(item.id) === adId);
@@ -27,9 +29,14 @@
     .map((value) => Number(value) || 0);
   $: frameWidth = creativeWidth || 300;
   $: frameHeight = creativeHeight || 250;
-  $: frameStyle = `width: ${frameWidth}px; height: ${frameHeight}px;`;
-  $: slotStyle = `width: ${frameWidth}px; min-height: ${frameHeight}px;`;
-  $: attachRuntime(ad?.id, hasHtmlProgrammaticPreview ? ad?.htmlPreviewUrl : '', liveFrame, adSlot);
+  $: frameScale = frameWidth > 0 && slotAvailableWidth > 0 ? Math.min(1, slotAvailableWidth / frameWidth) : 1;
+  $: scaledFrameWidth = Math.ceil(frameWidth * frameScale);
+  $: scaledFrameHeight = Math.ceil(frameHeight * frameScale);
+  $: frameStyle = `width: ${frameWidth}px; height: ${frameHeight}px; transform: scale(${frameScale});`;
+  $: frameShellStyle = `width: ${scaledFrameWidth}px; height: ${scaledFrameHeight}px;`;
+  $: slotStyle = `--creative-width: ${frameWidth}px;`;
+  $: watchSlot(adSlot);
+  $: attachRuntime(ad?.id, hasHtmlProgrammaticPreview ? ad?.htmlPreviewUrl : '', liveFrame, adSlot, frameScale);
 
   function addLog(log) {
     runtimeLogs = [
@@ -41,8 +48,18 @@
     ].slice(0, 60);
   }
 
-  function attachRuntime(id, previewUrl, frame, slot) {
-    const nextKey = browser && id && previewUrl && frame && slot ? `${id}-${previewUrl}` : '';
+  function watchSlot(slot) {
+    if (!browser || !slot || resizeObserver) return;
+    resizeObserver = new ResizeObserver(([entry]) => {
+      slotAvailableWidth = entry?.contentRect?.width || slot.clientWidth || 0;
+      runtime?.update();
+    });
+    resizeObserver.observe(slot);
+    slotAvailableWidth = slot.clientWidth || 0;
+  }
+
+  function attachRuntime(id, previewUrl, frame, slot, scale) {
+    const nextKey = browser && id && previewUrl && frame && slot ? `${id}-${previewUrl}-${scale}` : '';
     if (nextKey === runtimeKey) return;
 
     runtime?.destroy();
@@ -61,6 +78,9 @@
       runtime = createAdRuntime({
         iframe: liveFrame,
         slot: adSlot,
+        creativeWidth: frameWidth,
+        creativeHeight: frameHeight,
+        creativeScale: scale,
         onUpdate: (update) => (runtimeState = update),
         onLog: addLog,
         onImpression: () => (impressionFired = true),
@@ -78,6 +98,7 @@
 
   onDestroy(() => {
     runtime?.destroy();
+    resizeObserver?.disconnect();
   });
 </script>
 
@@ -125,15 +146,17 @@
             <aside class="publisher-ad-callout">
               <span>Advertisement</span>
               <div bind:this={adSlot} class="live-ad-slot" style={slotStyle}>
-                <iframe
-                  bind:this={liveFrame}
-                  src={ad.htmlPreviewUrl}
-                  title={`${ad.title} live programmatic preview`}
-                  sandbox="allow-scripts"
-                  referrerpolicy="no-referrer"
-                  style={frameStyle}
-                  on:load={handleFrameLoad}
-                ></iframe>
+                <div class="live-ad-frame-shell" style={frameShellStyle}>
+                  <iframe
+                    bind:this={liveFrame}
+                    src={ad.htmlPreviewUrl}
+                    title={`${ad.title} live programmatic preview`}
+                    sandbox="allow-scripts"
+                    referrerpolicy="no-referrer"
+                    style={frameStyle}
+                    on:load={handleFrameLoad}
+                  ></iframe>
+                </div>
               </div>
             </aside>
 

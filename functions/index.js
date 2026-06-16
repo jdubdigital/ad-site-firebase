@@ -373,9 +373,15 @@ function html5PreviewBootstrap() {
   var RUNTIME_READY = 'AD_ARCHIVE_RUNTIME_READY';
   var listeners = {};
   var mraidListeners = {};
+  var safeFrameListeners = [];
   var runtimeState = {};
   var mraidState = 'default';
   var mraidViewable = false;
+  var windowScrollAccessorsInstalled = false;
+  var documentScrollAccessorsInstalled = false;
+  var bodyScrollAccessorsInstalled = false;
+  var lastViewportWidth = 0;
+  var lastViewportHeight = 0;
 
   function serialize(value, depth) {
     if (depth > 2) return '[Object]';
@@ -442,6 +448,13 @@ function html5PreviewBootstrap() {
       customEvent = document.createEvent('CustomEvent');
       customEvent.initCustomEvent(name, true, true, detail || {});
     }
+    if (detail && typeof detail === 'object') {
+      Object.keys(detail).forEach(function (key) {
+        try {
+          customEvent[key] = detail[key];
+        } catch (error) {}
+      });
+    }
     callbacks.slice().forEach(function (callback) {
       try {
         callback(customEvent);
@@ -453,11 +466,12 @@ function html5PreviewBootstrap() {
     });
   }
 
-  function emitMraid(name, detail) {
+  function emitMraid(name) {
     var callbacks = mraidListeners[name] || [];
+    var args = Array.prototype.slice.call(arguments, 1);
     callbacks.slice().forEach(function (callback) {
       try {
-        callback(detail);
+        callback.apply(null, args);
       } catch (error) {
         setTimeout(function () {
           throw error;
@@ -475,13 +489,177 @@ function html5PreviewBootstrap() {
     };
   }
 
+  function pagePosition() {
+    return {
+      x: Math.round(runtimeState.adPageLeft || runtimeState.adLeft || 0),
+      y: Math.round(runtimeState.adPageTop || runtimeState.adTop || 0),
+      left: Math.round(runtimeState.adPageLeft || runtimeState.adLeft || 0),
+      top: Math.round(runtimeState.adPageTop || runtimeState.adTop || 0)
+    };
+  }
+
+  function viewportDimensions() {
+    return {
+      width: Math.round(runtimeState.viewportWidth || window.innerWidth || 0),
+      height: Math.round(runtimeState.viewportHeight || window.innerHeight || 0)
+    };
+  }
+
+  function safeFrameGeometry() {
+    var viewport = viewportDimensions();
+    var position = currentPosition();
+    var visiblePercent = Math.round(runtimeState.visiblePercent || 0);
+    return {
+      win: {
+        t: 0,
+        l: 0,
+        b: viewport.height,
+        r: viewport.width,
+        w: viewport.width,
+        h: viewport.height
+      },
+      self: {
+        t: Math.round(runtimeState.adTop || 0),
+        l: Math.round(runtimeState.adLeft || 0),
+        b: Math.round(runtimeState.adBottom || 0),
+        r: Math.round(runtimeState.adRight || 0),
+        x: position.x,
+        y: position.y,
+        w: position.width,
+        h: position.height,
+        iv: visiblePercent
+      },
+      exp: {
+        t: 0,
+        l: 0,
+        b: 0,
+        r: 0,
+        xs: false,
+        yx: false
+      },
+      meta: {
+        scrollX: Math.round(runtimeState.scrollX || 0),
+        scrollY: Math.round(runtimeState.scrollY || 0),
+        visiblePercent: visiblePercent,
+        creativeScale: runtimeState.creativeScale || 1
+      }
+    };
+  }
+
+  function runtimeDetail() {
+    return Object.assign({}, runtimeState, {
+      scrollTop: Math.round(runtimeState.scrollY || 0),
+      scrollLeft: Math.round(runtimeState.scrollX || 0),
+      pageOffset: {
+        x: Math.round(runtimeState.scrollX || 0),
+        y: Math.round(runtimeState.scrollY || 0)
+      },
+      viewport: viewportDimensions(),
+      position: currentPosition(),
+      pagePosition: pagePosition(),
+      geometry: safeFrameGeometry()
+    });
+  }
+
+  function installScrollAccessors() {
+    function defineGetter(target, name, getter) {
+      try {
+        Object.defineProperty(target, name, {
+          configurable: true,
+          get: getter
+        });
+      } catch (error) {}
+    }
+
+    if (!windowScrollAccessorsInstalled) {
+      windowScrollAccessorsInstalled = true;
+      defineGetter(window, 'pageYOffset', function () {
+        return runtimeState.scrollY || 0;
+      });
+      defineGetter(window, 'scrollY', function () {
+        return runtimeState.scrollY || 0;
+      });
+      defineGetter(window, 'pageXOffset', function () {
+        return runtimeState.scrollX || 0;
+      });
+      defineGetter(window, 'scrollX', function () {
+        return runtimeState.scrollX || 0;
+      });
+    }
+    if (document.documentElement && !documentScrollAccessorsInstalled) {
+      documentScrollAccessorsInstalled = true;
+      defineGetter(document.documentElement, 'scrollTop', function () {
+        return runtimeState.scrollY || 0;
+      });
+      defineGetter(document.documentElement, 'scrollLeft', function () {
+        return runtimeState.scrollX || 0;
+      });
+    }
+    if (document.body && !bodyScrollAccessorsInstalled) {
+      bodyScrollAccessorsInstalled = true;
+      defineGetter(document.body, 'scrollTop', function () {
+        return runtimeState.scrollY || 0;
+      });
+      defineGetter(document.body, 'scrollLeft', function () {
+        return runtimeState.scrollX || 0;
+      });
+    }
+  }
+
+  function dispatchBrowserEvent(target, name, detail) {
+    try {
+      target.dispatchEvent(new CustomEvent(name, { bubbles: true, cancelable: true, detail: detail || {} }));
+      return;
+    } catch (error) {}
+    try {
+      var customEvent = document.createEvent('CustomEvent');
+      customEvent.initCustomEvent(name, true, true, detail || {});
+      target.dispatchEvent(customEvent);
+    } catch (error) {}
+  }
+
+  function dispatchHostScrollSignals() {
+    var detail = runtimeDetail();
+
+    emit(window.studio.events.StudioEvent.HOSTPAGE_SCROLL, detail);
+    emit('hostpagescroll', detail);
+    dispatchBrowserEvent(window, 'adArchiveHostScroll', detail);
+
+    try {
+      window.dispatchEvent(new Event('scroll'));
+      document.dispatchEvent(new Event('scroll'));
+    } catch (error) {}
+
+    safeFrameListeners.slice().forEach(function (callback) {
+      try {
+        callback(safeFrameGeometry());
+      } catch (error) {
+        setTimeout(function () {
+          throw error;
+        });
+      }
+    });
+  }
+
+  function dispatchViewportSignalIfNeeded() {
+    var viewport = viewportDimensions();
+    if (viewport.width === lastViewportWidth && viewport.height === lastViewportHeight) return;
+    lastViewportWidth = viewport.width;
+    lastViewportHeight = viewport.height;
+    try {
+      window.dispatchEvent(new Event('resize'));
+    } catch (error) {}
+  }
+
   window.__AD_ARCHIVE_RUNTIME = window.__AD_ARCHIVE_RUNTIME || runtimeState;
+  installScrollAccessors();
   window.addEventListener('message', function (event) {
     var data = event.data || {};
     if (data.type !== RUNTIME_UPDATE) return;
 
     runtimeState = Object.assign({}, data);
     window.__AD_ARCHIVE_RUNTIME = runtimeState;
+    installScrollAccessors();
 
     try {
       window.dispatchEvent(new CustomEvent('adArchiveRuntimeUpdate', { detail: runtimeState }));
@@ -494,12 +672,15 @@ function html5PreviewBootstrap() {
     if (runtimeState.isVisible) {
       emit(window.studio.events.StudioEvent.VISIBLE, runtimeState);
     }
+    dispatchHostScrollSignals();
+    dispatchViewportSignalIfNeeded();
 
     var nextViewable = Boolean(runtimeState.visiblePercent >= 50);
     if (nextViewable !== mraidViewable) {
       mraidViewable = nextViewable;
       emitMraid('viewableChange', mraidViewable);
     }
+    emitMraid('exposureChange', runtimeState.visiblePercent || 0, currentPosition(), []);
   });
 
   window.studio = window.studio || {};
@@ -518,7 +699,9 @@ function html5PreviewBootstrap() {
     FULLSCREEN_COLLAPSE_FINISH: event('fullscreencollapsefinish'),
     FULLSCREEN_DIMENSIONS: event('fullscreendimensions'),
     FULLSCREEN_SUPPORT: event('fullscreensupport'),
-    HOSTPAGE_SCROLL: event('hostpagescroll')
+    HOSTPAGE_SCROLL: event('hostpagescroll'),
+    HOST_PAGE_SCROLL: event('hostpagescroll'),
+    PAGE_SCROLL: event('hostpagescroll')
   };
   window.studio.module = window.studio.module || { ModuleId: { GDN: 'gdn' } };
   window.studio.sdk = window.studio.sdk || {};
@@ -578,6 +761,37 @@ function html5PreviewBootstrap() {
       setTimeout(function () {
         emit(window.studio.events.StudioEvent.FULLSCREEN_SUPPORT, { supported: false });
       }, 0);
+    },
+    getPageOffset: function (callback) {
+      log('Enabler', 'getPageOffset', arguments);
+      var offset = pagePosition();
+      if (typeof callback === 'function') setTimeout(function () { callback(offset.x, offset.y); }, 0);
+      return offset;
+    },
+    getHostPageOffset: function (callback) {
+      log('Enabler', 'getHostPageOffset', arguments);
+      var offset = pagePosition();
+      if (typeof callback === 'function') setTimeout(function () { callback(offset.x, offset.y); }, 0);
+      return offset;
+    },
+    getViewportDimensions: function (callback) {
+      log('Enabler', 'getViewportDimensions', arguments);
+      var viewport = viewportDimensions();
+      if (typeof callback === 'function') setTimeout(function () { callback(viewport.width, viewport.height); }, 0);
+      return viewport;
+    },
+    getContainerDimensions: function (callback) {
+      log('Enabler', 'getContainerDimensions', arguments);
+      var position = currentPosition();
+      var dimensions = { width: position.width, height: position.height };
+      if (typeof callback === 'function') setTimeout(function () { callback(dimensions.width, dimensions.height); }, 0);
+      return dimensions;
+    },
+    getVisibleGeometry: function (callback) {
+      log('Enabler', 'getVisibleGeometry', arguments);
+      var geometry = safeFrameGeometry();
+      if (typeof callback === 'function') setTimeout(function () { callback(geometry); }, 0);
+      return geometry;
     },
     exit: function () {
       log('Enabler', 'exit', arguments, 'Exit captured; no navigation performed.');
@@ -689,6 +903,20 @@ function html5PreviewBootstrap() {
         height: runtimeState.viewportHeight || window.innerHeight || 0
       };
     },
+    getScreenSize: function () {
+      log('mraid', 'getScreenSize', arguments);
+      return {
+        width: runtimeState.viewportWidth || window.innerWidth || 0,
+        height: runtimeState.viewportHeight || window.innerHeight || 0
+      };
+    },
+    getSize: function () {
+      log('mraid', 'getSize', arguments);
+      return {
+        width: runtimeState.creativeWidth || runtimeState.adWidth || window.innerWidth || 0,
+        height: runtimeState.creativeHeight || runtimeState.adHeight || window.innerHeight || 0
+      };
+    },
     getCurrentPosition: function () {
       log('mraid', 'getCurrentPosition', arguments);
       return currentPosition();
@@ -724,6 +952,27 @@ function html5PreviewBootstrap() {
     },
     resize: function () {
       log('mraid', 'resize', arguments);
+    },
+    supports: function (feature) {
+      log('mraid', 'supports', arguments);
+      return ['sms', 'tel', 'calendar', 'storePicture', 'inlineVideo'].indexOf(feature) !== -1;
+    },
+    useCustomClose: function () {
+      log('mraid', 'useCustomClose', arguments);
+    },
+    setResizeProperties: function () {
+      log('mraid', 'setResizeProperties', arguments);
+    },
+    getResizeProperties: function () {
+      log('mraid', 'getResizeProperties', arguments);
+      return {
+        width: runtimeState.creativeWidth || runtimeState.adWidth || 0,
+        height: runtimeState.creativeHeight || runtimeState.adHeight || 0,
+        offsetX: 0,
+        offsetY: 0,
+        customClosePosition: 'top-right',
+        allowOffscreen: false
+      };
     }
   };
 
@@ -731,10 +980,7 @@ function html5PreviewBootstrap() {
     ext: {
       geom: function () {
         log('$sf.ext', 'geom', arguments);
-        return {
-          win: { w: runtimeState.viewportWidth || 0, h: runtimeState.viewportHeight || 0 },
-          self: currentPosition()
-        };
+        return safeFrameGeometry();
       },
       inViewPercentage: function () {
         log('$sf.ext', 'inViewPercentage', arguments);
@@ -748,6 +994,17 @@ function html5PreviewBootstrap() {
       },
       register: function () {
         log('$sf.ext', 'register', arguments);
+        var callback = Array.prototype.slice.call(arguments).find(function (item) {
+          return typeof item === 'function';
+        });
+        if (callback && safeFrameListeners.indexOf(callback) === -1) safeFrameListeners.push(callback);
+        if (callback) setTimeout(function () {
+          callback(safeFrameGeometry());
+        }, 0);
+      },
+      unregister: function () {
+        log('$sf.ext', 'unregister', arguments);
+        safeFrameListeners = [];
       },
       status: function () {
         log('$sf.ext', 'status', arguments);
@@ -760,6 +1017,7 @@ function html5PreviewBootstrap() {
   };
 
   function wakeCreative() {
+    installScrollAccessors();
     if (document.body) document.body.style.opacity = '';
     window.dispatchEvent(new Event('WebComponentsReady'));
     window.dispatchEvent(new Event('adinitialized'));
