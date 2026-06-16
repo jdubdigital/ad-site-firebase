@@ -9,6 +9,7 @@
 
   $: adId = decodeURIComponent($page.params.id || '');
   $: ad = $ads.find((item) => String(item.id) === adId);
+  $: hasHtmlProgrammaticPreview = ad?.type === 'html5' && Boolean(ad.htmlPreviewUrl);
   $: userSlug = ad ? getAdUserSlug(ad) : '';
   $: detailRows = ad
     ? [
@@ -62,6 +63,12 @@
           {/if}
 
           <div class="ad-detail-actions">
+            {#if hasHtmlProgrammaticPreview}
+              <button class="button button-primary" type="button" on:click={() => goto(`/live/${encodeURIComponent(String(ad.id))}`)}>
+                Open Live Preview
+              </button>
+            {/if}
+
             <button
               class:is-liked={ad.liked}
               class="button button-secondary like-detail-button"

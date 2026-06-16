@@ -368,12 +368,71 @@ function previewContentHeaders(contentType) {
 function html5PreviewBootstrap() {
   return `<script>
 (function () {
-  if (window.Enabler && window.studio && window.studio.Enabler) return;
-
+  var RUNTIME_UPDATE = 'AD_ARCHIVE_RUNTIME_UPDATE';
+  var RUNTIME_LOG = 'AD_ARCHIVE_RUNTIME_LOG';
+  var RUNTIME_READY = 'AD_ARCHIVE_RUNTIME_READY';
   var listeners = {};
+  var mraidListeners = {};
+  var runtimeState = {};
+  var mraidState = 'default';
+  var mraidViewable = false;
+
+  function serialize(value, depth) {
+    if (depth > 2) return '[Object]';
+    if (value === null || value === undefined) return value;
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
+    if (Array.isArray(value)) {
+      return value.slice(0, 8).map(function (item) {
+        return serialize(item, depth + 1);
+      });
+    }
+    if (typeof value === 'function') return '[Function]';
+    if (value && value.nodeType) return '[Element]';
+
+    var output = {};
+    Object.keys(value)
+      .slice(0, 12)
+      .forEach(function (key) {
+        output[key] = serialize(value[key], depth + 1);
+      });
+    return output;
+  }
+
+  function argsList(args) {
+    return Array.prototype.slice.call(args || []).map(function (item) {
+      return serialize(item, 0);
+    });
+  }
+
+  function post(type, body) {
+    try {
+      window.parent.postMessage(
+        Object.assign(
+          {
+            type: type,
+            timestamp: Date.now()
+          },
+          body || {}
+        ),
+        '*'
+      );
+    } catch (error) {}
+  }
+
+  function log(api, method, args, message) {
+    post(RUNTIME_LOG, {
+      level: 'info',
+      api: api,
+      method: method,
+      args: argsList(args),
+      message: message || ''
+    });
+  }
+
   function event(name) {
     return name;
   }
+
   function emit(name, detail) {
     var callbacks = listeners[name] || [];
     var customEvent;
@@ -393,6 +452,55 @@ function html5PreviewBootstrap() {
       }
     });
   }
+
+  function emitMraid(name, detail) {
+    var callbacks = mraidListeners[name] || [];
+    callbacks.slice().forEach(function (callback) {
+      try {
+        callback(detail);
+      } catch (error) {
+        setTimeout(function () {
+          throw error;
+        });
+      }
+    });
+  }
+
+  function currentPosition() {
+    return {
+      x: Math.round(runtimeState.adLeft || 0),
+      y: Math.round(runtimeState.adTop || 0),
+      width: Math.round(runtimeState.adWidth || window.innerWidth || 0),
+      height: Math.round(runtimeState.adHeight || window.innerHeight || 0)
+    };
+  }
+
+  window.__AD_ARCHIVE_RUNTIME = window.__AD_ARCHIVE_RUNTIME || runtimeState;
+  window.addEventListener('message', function (event) {
+    var data = event.data || {};
+    if (data.type !== RUNTIME_UPDATE) return;
+
+    runtimeState = Object.assign({}, data);
+    window.__AD_ARCHIVE_RUNTIME = runtimeState;
+
+    try {
+      window.dispatchEvent(new CustomEvent('adArchiveRuntimeUpdate', { detail: runtimeState }));
+    } catch (error) {
+      var customEvent = document.createEvent('CustomEvent');
+      customEvent.initCustomEvent('adArchiveRuntimeUpdate', false, false, runtimeState);
+      window.dispatchEvent(customEvent);
+    }
+
+    if (runtimeState.isVisible) {
+      emit(window.studio.events.StudioEvent.VISIBLE, runtimeState);
+    }
+
+    var nextViewable = Boolean(runtimeState.visiblePercent >= 50);
+    if (nextViewable !== mraidViewable) {
+      mraidViewable = nextViewable;
+      emitMraid('viewableChange', mraidViewable);
+    }
+  });
 
   window.studio = window.studio || {};
   window.studio.events = window.studio.events || {};
@@ -428,8 +536,9 @@ function html5PreviewBootstrap() {
   };
   window.studio.video = window.studio.video || { Reporter: { attach: function () {}, detach: function () {} } };
 
-  var Enabler = {
+  var Enabler = window.Enabler || {
     addEventListener: function (name, callback) {
+      log('Enabler', 'addEventListener', arguments);
       listeners[name] = listeners[name] || [];
       listeners[name].push(callback);
       if (name === window.studio.events.StudioEvent.INIT || name === window.studio.events.StudioEvent.VISIBLE || name === window.studio.events.StudioEvent.PAGE_LOADED) {
@@ -439,64 +548,216 @@ function html5PreviewBootstrap() {
       }
     },
     removeEventListener: function (name, callback) {
+      log('Enabler', 'removeEventListener', arguments);
       listeners[name] = (listeners[name] || []).filter(function (item) {
         return item !== callback;
       });
     },
     isInitialized: function () {
+      log('Enabler', 'isInitialized', arguments);
       return true;
     },
     isVisible: function () {
-      return true;
+      log('Enabler', 'isVisible', arguments);
+      return runtimeState.isVisible !== false;
     },
     isPageLoaded: function () {
+      log('Enabler', 'isPageLoaded', arguments);
       return true;
     },
     isServingInLiveEnvironment: function () {
+      log('Enabler', 'isServingInLiveEnvironment', arguments);
       return false;
     },
     loadModule: function (_moduleId, callback) {
+      log('Enabler', 'loadModule', arguments);
       if (callback) setTimeout(callback, 0);
     },
     queryFullscreenSupport: function () {
+      log('Enabler', 'queryFullscreenSupport', arguments);
       setTimeout(function () {
         emit(window.studio.events.StudioEvent.FULLSCREEN_SUPPORT, { supported: false });
       }, 0);
     },
-    exit: function () {},
-    exitOverride: function () {},
-    dynamicExit: function () {},
-    counter: function () {},
-    startTimer: function () {},
-    stopTimer: function () {},
-    reportManualClose: function () {},
+    exit: function () {
+      log('Enabler', 'exit', arguments, 'Exit captured; no navigation performed.');
+    },
+    exitOverride: function () {
+      log('Enabler', 'exitOverride', arguments, 'Exit captured; no navigation performed.');
+    },
+    dynamicExit: function () {
+      log('Enabler', 'dynamicExit', arguments, 'Exit captured; no navigation performed.');
+    },
+    counter: function () {
+      log('Enabler', 'counter', arguments);
+    },
+    startTimer: function () {
+      log('Enabler', 'startTimer', arguments);
+    },
+    stopTimer: function () {
+      log('Enabler', 'stopTimer', arguments);
+    },
+    reportManualClose: function () {
+      log('Enabler', 'reportManualClose', arguments);
+    },
     requestExpand: function () {
+      log('Enabler', 'requestExpand', arguments);
       emit(window.studio.events.StudioEvent.EXPAND_START);
       emit(window.studio.events.StudioEvent.EXPAND_FINISH);
     },
-    finishExpand: function () {},
+    finishExpand: function () {
+      log('Enabler', 'finishExpand', arguments);
+    },
     requestCollapse: function () {
+      log('Enabler', 'requestCollapse', arguments);
       emit(window.studio.events.StudioEvent.COLLAPSE_START);
       emit(window.studio.events.StudioEvent.COLLAPSE_FINISH);
     },
-    finishCollapse: function () {},
+    finishCollapse: function () {
+      log('Enabler', 'finishCollapse', arguments);
+    },
     requestFullscreenExpand: function () {
+      log('Enabler', 'requestFullscreenExpand', arguments);
       emit(window.studio.events.StudioEvent.FULLSCREEN_EXPAND_START);
       emit(window.studio.events.StudioEvent.FULLSCREEN_EXPAND_FINISH);
     },
-    finishFullscreenExpand: function () {},
+    finishFullscreenExpand: function () {
+      log('Enabler', 'finishFullscreenExpand', arguments);
+    },
     requestFullscreenCollapse: function () {
+      log('Enabler', 'requestFullscreenCollapse', arguments);
       emit(window.studio.events.StudioEvent.FULLSCREEN_COLLAPSE_START);
       emit(window.studio.events.StudioEvent.FULLSCREEN_COLLAPSE_FINISH);
     },
-    finishFullscreenCollapse: function () {},
-    setResponsiveExpanding: function () {},
-    setResponsiveSize: function () {},
-    setRushSimulatedLocalEvents: function () {}
+    finishFullscreenCollapse: function () {
+      log('Enabler', 'finishFullscreenCollapse', arguments);
+    },
+    setResponsiveExpanding: function () {
+      log('Enabler', 'setResponsiveExpanding', arguments);
+    },
+    setResponsiveSize: function () {
+      log('Enabler', 'setResponsiveSize', arguments);
+    },
+    setRushSimulatedLocalEvents: function () {
+      log('Enabler', 'setRushSimulatedLocalEvents', arguments);
+    }
   };
 
   window.Enabler = window.Enabler || Enabler;
   window.studio.Enabler = window.studio.Enabler || window.Enabler;
+  window.clickTag = window.clickTag || '#ad-archive-clicktag';
+
+  var nativeOpen = window.open;
+  window.open = function () {
+    log('window', 'open', arguments, 'Popup blocked in Ad Archive preview.');
+    return null;
+  };
+  window.open.__adArchiveNativeOpen = nativeOpen;
+
+  window.dataLayer = window.dataLayer || [];
+  if (!window.dataLayer.__adArchiveWrapped) {
+    var nativeDataLayerPush = window.dataLayer.push;
+    window.dataLayer.push = function () {
+      log('dataLayer', 'push', arguments);
+      return nativeDataLayerPush.apply(window.dataLayer, arguments);
+    };
+    window.dataLayer.__adArchiveWrapped = true;
+  }
+  window.google_tag_manager = window.google_tag_manager || {};
+
+  window.mraid = window.mraid || {
+    getState: function () {
+      log('mraid', 'getState', arguments);
+      return mraidState;
+    },
+    isViewable: function () {
+      log('mraid', 'isViewable', arguments);
+      return mraidViewable;
+    },
+    getVersion: function () {
+      log('mraid', 'getVersion', arguments);
+      return '3.0';
+    },
+    getPlacementType: function () {
+      log('mraid', 'getPlacementType', arguments);
+      return 'inline';
+    },
+    getMaxSize: function () {
+      log('mraid', 'getMaxSize', arguments);
+      return {
+        width: runtimeState.viewportWidth || window.innerWidth || 0,
+        height: runtimeState.viewportHeight || window.innerHeight || 0
+      };
+    },
+    getCurrentPosition: function () {
+      log('mraid', 'getCurrentPosition', arguments);
+      return currentPosition();
+    },
+    getDefaultPosition: function () {
+      log('mraid', 'getDefaultPosition', arguments);
+      return currentPosition();
+    },
+    addEventListener: function (name, callback) {
+      log('mraid', 'addEventListener', arguments);
+      mraidListeners[name] = mraidListeners[name] || [];
+      mraidListeners[name].push(callback);
+      if (name === 'ready') setTimeout(callback, 0);
+    },
+    removeEventListener: function (name, callback) {
+      log('mraid', 'removeEventListener', arguments);
+      mraidListeners[name] = (mraidListeners[name] || []).filter(function (item) {
+        return item !== callback;
+      });
+    },
+    open: function () {
+      log('mraid', 'open', arguments, 'Open captured; no popup or navigation performed.');
+    },
+    expand: function () {
+      log('mraid', 'expand', arguments);
+      mraidState = 'expanded';
+      emitMraid('stateChange', mraidState);
+    },
+    close: function () {
+      log('mraid', 'close', arguments);
+      mraidState = 'default';
+      emitMraid('stateChange', mraidState);
+    },
+    resize: function () {
+      log('mraid', 'resize', arguments);
+    }
+  };
+
+  window.$sf = window.$sf || {
+    ext: {
+      geom: function () {
+        log('$sf.ext', 'geom', arguments);
+        return {
+          win: { w: runtimeState.viewportWidth || 0, h: runtimeState.viewportHeight || 0 },
+          self: currentPosition()
+        };
+      },
+      inViewPercentage: function () {
+        log('$sf.ext', 'inViewPercentage', arguments);
+        return Math.round(runtimeState.visiblePercent || 0);
+      },
+      expand: function () {
+        log('$sf.ext', 'expand', arguments);
+      },
+      collapse: function () {
+        log('$sf.ext', 'collapse', arguments);
+      },
+      register: function () {
+        log('$sf.ext', 'register', arguments);
+      },
+      status: function () {
+        log('$sf.ext', 'status', arguments);
+        return 'expanded';
+      }
+    },
+    env: {
+      isMobile: false
+    }
+  };
 
   function wakeCreative() {
     if (document.body) document.body.style.opacity = '';
@@ -512,6 +773,15 @@ function html5PreviewBootstrap() {
     setTimeout(wakeCreative, 0);
   }
   setTimeout(wakeCreative, 80);
+  post(RUNTIME_READY, {
+    apis: {
+      clickTag: Boolean(window.clickTag),
+      Enabler: Boolean(window.Enabler),
+      mraid: Boolean(window.mraid),
+      safeFrame: Boolean(window.$sf),
+      dataLayer: Boolean(window.dataLayer)
+    }
+  });
 })();
 </script>`;
 }
