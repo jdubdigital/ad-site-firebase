@@ -1,6 +1,6 @@
-import { defaultDashboardProfile, users } from '$lib/data/catalog';
+import { defaultDashboardProfile } from '$lib/data/catalog';
 import { getUserBySlug } from '$lib/utils/ad-utils';
-import { cleanDisplayName, createDisplayNameKey, createUsernameSlug } from '$lib/utils/slug';
+import { createUsernameSlug } from '$lib/utils/slug';
 import { readJson, writeJson } from './storage';
 
 const DASHBOARD_PROFILE_KEY = 'dashboardProfile';
@@ -13,13 +13,11 @@ export function getDashboardProfile() {
     currentProfile.userSlug || legacyUserSlug || currentProfile.username,
     defaultDashboardProfile.userSlug
   );
-  const name = cleanDisplayName(currentProfile.name, defaultDashboardProfile.name);
 
   return {
     ...defaultDashboardProfile,
     ...currentProfile,
-    name,
-    displayNameKey: createDisplayNameKey(currentProfile.displayNameKey || name, defaultDashboardProfile.displayNameKey),
+    name: createUsernameSlug(currentProfile.username || userSlug, userSlug),
     username: createUsernameSlug(currentProfile.username || userSlug, userSlug),
     userSlug
   };
@@ -27,11 +25,9 @@ export function getDashboardProfile() {
 
 export function setDashboardProfile(profile) {
   const userSlug = createUsernameSlug(profile.userSlug || profile.username, defaultDashboardProfile.userSlug);
-  const name = cleanDisplayName(profile.name, defaultDashboardProfile.name);
   const saved = {
     ...profile,
-    name,
-    displayNameKey: createDisplayNameKey(name, defaultDashboardProfile.displayNameKey),
+    name: userSlug,
     username: userSlug,
     userSlug
   };
@@ -52,15 +48,4 @@ export function checkUserSlugAvailable(slug, currentSlug = '') {
   if (!cleanSlug) return false;
   if (cleanSlug === currentSlug) return true;
   return !getPublicProfileBySlug(cleanSlug);
-}
-
-export function checkDisplayNameAvailable(name, currentNameKey = '') {
-  const cleanName = cleanDisplayName(name, '');
-  const cleanKey = createDisplayNameKey(cleanName, '');
-  if (cleanName.length < 2 || !cleanKey) return false;
-  if (cleanKey === currentNameKey) return true;
-  if (users.some((user) => createDisplayNameKey(user.name) === cleanKey)) return false;
-
-  const dashboardProfile = getDashboardProfile();
-  return dashboardProfile.displayNameKey !== cleanKey;
 }

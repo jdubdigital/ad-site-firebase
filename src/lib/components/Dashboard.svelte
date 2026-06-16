@@ -8,7 +8,7 @@
   import { signedInEmail, signOut } from '$lib/stores/account';
   import { ads, deleteAd, hydrateAds } from '$lib/stores/archive';
   import { favoriteUsers } from '$lib/stores/favorites';
-  import { checkDisplayNameAvailable, profile, saveProfile } from '$lib/stores/profile';
+  import { profile, saveProfile } from '$lib/stores/profile';
   import { openSubmit } from '$lib/stores/ui';
   import {
     getAdChronology,
@@ -19,14 +19,6 @@
     getUserBySlug,
     getUserInitials
   } from '$lib/utils/ad-utils';
-  import { cleanDisplayName, createDisplayNameKey } from '$lib/utils/slug';
-
-  let displayName = '';
-  let displayNameStatus = '';
-  let displayNameAvailable = true;
-  let checkingDisplayName = false;
-  let displayNameCheckTimer;
-  let displayNameCheckRun = 0;
   let username = '';
   let accountType = 'Brand';
   let description = '';
@@ -96,7 +88,7 @@
   $: currentProfile = $profile;
   $: siteOrigin = browser ? window.location.origin : 'https://ad-archive-34f6c.web.app';
   $: portfolioUrl = currentProfile?.userSlug ? `${siteOrigin}/embed/user/${encodeURIComponent(currentProfile.userSlug)}` : '';
-  $: portfolioTitle = `${currentProfile?.name || 'Ad Archive'} portfolio`;
+  $: portfolioTitle = `${currentProfile?.username || currentProfile?.userSlug || 'Ad Archive'} portfolio`;
   $: portfolioFrameId = currentProfile?.userSlug
     ? `adarchive-portfolio-${String(currentProfile.userSlug).replace(/[^a-z0-9_-]/gi, '-')}`
     : 'adarchive-portfolio-feed';
@@ -137,65 +129,15 @@
 
   $: loadFavoriteUserDetails($favoriteUsers);
   $: if (currentProfile) {
-    displayName = displayName || currentProfile.name;
     username = username || currentProfile.username || currentProfile.userSlug;
     accountType = accountType || currentProfile.type;
     description = description || currentProfile.description;
   }
 
   function syncFields() {
-    displayName = currentProfile.name;
     username = currentProfile.username || currentProfile.userSlug;
     accountType = currentProfile.type;
     description = currentProfile.description;
-  }
-
-  async function checkDisplayNameNow() {
-    const requestedName = cleanDisplayName(displayName, '');
-    const requestedKey = createDisplayNameKey(requestedName, '');
-    const currentKey = currentProfile.displayNameKey || createDisplayNameKey(currentProfile.name, '');
-    const run = ++displayNameCheckRun;
-
-    displayNameAvailable = false;
-
-    if (!requestedName || requestedName.length < 2) {
-      displayNameStatus = 'Use at least 2 characters.';
-      return false;
-    }
-
-    if (requestedKey === currentKey) {
-      displayNameAvailable = true;
-      displayNameStatus = 'Current display name.';
-      return true;
-    }
-
-    checkingDisplayName = true;
-    displayNameStatus = 'Checking display name...';
-
-    try {
-      const available = await checkDisplayNameAvailable(requestedName, currentKey);
-      if (run !== displayNameCheckRun) return false;
-
-      displayNameAvailable = available;
-      displayNameStatus = available ? 'Display name is available.' : 'That display name is already taken.';
-      return available;
-    } catch (error) {
-      if (run === displayNameCheckRun) displayNameStatus = 'Unable to check that display name right now.';
-      return false;
-    } finally {
-      if (run === displayNameCheckRun) checkingDisplayName = false;
-    }
-  }
-
-  function scheduleDisplayNameCheck() {
-    clearTimeout(displayNameCheckTimer);
-    displayName = cleanDisplayName(displayName, '');
-    displayNameAvailable = createDisplayNameKey(displayName, '') === (currentProfile.displayNameKey || createDisplayNameKey(currentProfile.name, ''));
-    displayNameStatus = displayName ? 'Checking display name...' : '';
-
-    if (displayName) {
-      displayNameCheckTimer = setTimeout(checkDisplayNameNow, 350);
-    }
   }
 
   async function saveDashboardProfile() {
@@ -204,12 +146,7 @@
     savingProfile = true;
 
     try {
-      const requestedName = cleanDisplayName(displayName, '');
-      const nameAvailable = await checkDisplayNameNow();
-      if (!nameAvailable) throw new Error('Choose an available display name before saving.');
-
       await saveProfile({
-        name: requestedName,
         type: accountType,
         description: description.trim() || currentProfile.description
       });
@@ -308,7 +245,7 @@
     goto('/');
   }
 
-  $: if (currentProfile && !displayName) syncFields();
+  $: if (currentProfile && !username) syncFields();
 </script>
 
 <section class="dashboard-hero">
@@ -331,15 +268,15 @@
       <section class="dashboard-card profile-card">
         <div class="avatar">
           {#if currentProfile.avatarUrl}
-            <img src={currentProfile.avatarUrl} alt={`${currentProfile.name} profile picture`} />
+            <img src={currentProfile.avatarUrl} alt={`${currentProfile.username || currentProfile.userSlug} profile picture`} />
           {:else}
-            {getUserInitials(currentProfile.name)}
+            {getUserInitials(currentProfile.username || currentProfile.userSlug)}
           {/if}
         </div>
-        <div class="profile-card-body">
+          <div class="profile-card-body">
           <div class="profile-card-header">
             <div class="user-name">
-              <h2>{currentProfile.name}</h2>
+              <h2>{currentProfile.username || currentProfile.userSlug}</h2>
               <span class="badge">{currentProfile.type}</span>
             </div>
             <a class="button button-secondary profile-view-button" href={`/user/${encodeURIComponent(currentProfile.userSlug)}`}>
@@ -362,9 +299,9 @@
               <div class="profile-picture-row">
                 <div class="avatar small">
                   {#if currentProfile.avatarUrl}
-                    <img src={currentProfile.avatarUrl} alt={`${currentProfile.name} profile picture`} />
+                    <img src={currentProfile.avatarUrl} alt={`${currentProfile.username || currentProfile.userSlug} profile picture`} />
                   {:else}
-                    {getUserInitials(displayName || currentProfile.name)}
+                    {getUserInitials(currentProfile.username || currentProfile.userSlug)}
                   {/if}
                 </div>
                 <label class="button button-secondary">
@@ -386,27 +323,7 @@
                 autocomplete="username"
                 value={username}
               />
-              <span class="field-help">Username is set when the account is created and cannot be changed.</span>
-            </label>
-
-            <label class="field-label">
-              Display name
-              <input
-                class="field"
-                type="text"
-                minlength="2"
-                maxlength="64"
-                autocomplete="name"
-                value={displayName}
-                on:input={(event) => {
-                  displayName = event.currentTarget.value;
-                  scheduleDisplayNameCheck();
-                }}
-                on:blur={checkDisplayNameNow}
-              />
-              {#if displayNameStatus}
-                <span class:status-good={displayNameAvailable} class="field-help">{displayNameStatus}</span>
-              {/if}
+              <span class="field-help">Cannot be changed later.</span>
             </label>
 
             <label class="field-label">
@@ -426,7 +343,7 @@
             <button
               class="button button-primary"
               type="button"
-              disabled={savingProfile || checkingDisplayName}
+              disabled={savingProfile}
               on:click={saveDashboardProfile}
             >
               {savingProfile ? 'Saving...' : 'Save profile'}

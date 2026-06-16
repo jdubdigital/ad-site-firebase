@@ -39,12 +39,3 @@ export async function checkUserSlugAvailable(slug, currentSlug = '') {
 
   return localProfile.checkUserSlugAvailable(slug, currentSlug);
 }
-
-export async function checkDisplayNameAvailable(name, currentNameKey = '') {
-  if (isFirebaseConfigured) {
-    const user = await getCurrentFirebaseUser();
-    return firebaseProfile.checkDisplayNameAvailable(name, user?.uid || '');
-  }
-
-  return localProfile.checkDisplayNameAvailable(name, currentNameKey);
-}

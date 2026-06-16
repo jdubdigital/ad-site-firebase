@@ -1,17 +1,11 @@
 <script>
   import { defaultDashboardProfile } from '$lib/data/catalog';
   import { createAccount, deleteCurrentAccount, signIn } from '$lib/stores/account';
-  import { checkDisplayNameAvailable, checkUserSlugAvailable, saveProfile } from '$lib/stores/profile';
+  import { checkUserSlugAvailable, saveProfile } from '$lib/stores/profile';
   import { closeLogin, loginMode, loginOpen } from '$lib/stores/ui';
-  import { cleanDisplayName, createUsernameSlug } from '$lib/utils/slug';
+  import { createUsernameSlug } from '$lib/utils/slug';
 
   let email = '';
-  let displayName = '';
-  let displayNameStatus = '';
-  let displayNameAvailable = false;
-  let checkingDisplayName = false;
-  let displayNameCheckTimer;
-  let displayNameCheckRun = 0;
   let username = '';
   let usernameStatus = '';
   let usernameAvailable = false;
@@ -25,51 +19,6 @@
 
   $: isCreate = $loginMode === 'create';
   $: usernameSlug = createUsernameSlug(username, '');
-
-  async function checkDisplayNameNow() {
-    const name = cleanDisplayName(displayName, '');
-    const run = ++displayNameCheckRun;
-
-    displayNameAvailable = false;
-
-    if (!isCreate || !name) {
-      displayNameStatus = '';
-      return false;
-    }
-
-    if (name.length < 2) {
-      displayNameStatus = 'Use at least 2 characters.';
-      return false;
-    }
-
-    checkingDisplayName = true;
-    displayNameStatus = 'Checking display name...';
-
-    try {
-      const available = await checkDisplayNameAvailable(name);
-      if (run !== displayNameCheckRun) return false;
-
-      displayNameAvailable = available;
-      displayNameStatus = available ? 'Display name is available.' : 'That display name is already taken.';
-      return available;
-    } catch (error) {
-      if (run === displayNameCheckRun) displayNameStatus = 'Unable to check that display name right now.';
-      return false;
-    } finally {
-      if (run === displayNameCheckRun) checkingDisplayName = false;
-    }
-  }
-
-  function scheduleDisplayNameCheck() {
-    clearTimeout(displayNameCheckTimer);
-    displayName = cleanDisplayName(displayName, '');
-    displayNameStatus = displayName ? 'Checking display name...' : '';
-    displayNameAvailable = false;
-
-    if (displayName) {
-      displayNameCheckTimer = setTimeout(checkDisplayNameNow, 350);
-    }
-  }
 
   async function checkUsernameNow() {
     const slug = createUsernameSlug(username, '');
@@ -126,18 +75,12 @@
 
     try {
       if (isCreate) {
-        const requestedDisplayName = cleanDisplayName(displayName, '');
-        if (!requestedDisplayName || requestedDisplayName.length < 2) {
-          throw new Error('Choose a display name with at least 2 characters.');
-        }
-
         const requestedSlug = createUsernameSlug(usernameSlug, '');
         if (!requestedSlug || requestedSlug.length < 3) {
           throw new Error('Choose a username with at least 3 characters.');
         }
 
-        const [nameAvailable, slugAvailable] = await Promise.all([checkDisplayNameNow(), checkUsernameNow()]);
-        if (!nameAvailable) throw new Error('That display name is already taken.');
+        const slugAvailable = await checkUsernameNow();
         if (!slugAvailable) throw new Error('That username is already taken.');
 
         let accountCreated = false;
@@ -147,7 +90,7 @@
           await saveProfile({
             ...defaultDashboardProfile,
             email: cleanedEmail,
-            name: requestedDisplayName,
+            name: requestedSlug,
             type: accountType,
             username: requestedSlug,
             userSlug: requestedSlug
@@ -161,9 +104,6 @@
       }
 
       email = '';
-      displayName = '';
-      displayNameStatus = '';
-      displayNameAvailable = false;
       username = '';
       usernameStatus = '';
       usernameAvailable = false;
@@ -186,9 +126,7 @@
         <div>
           <p class="eyebrow">Account</p>
           <h2 id="login-title" class="modal-title">{isCreate ? 'Create account' : 'Sign in'}</h2>
-          <p class="muted">
-            {isCreate ? 'Start saving favorites and organizing ad inspiration.' : 'Save favorites and build creative collections.'}
-          </p>
+          <p class="muted">{isCreate ? 'Claim your username and start building your archive.' : 'Save favorites and build creative collections.'}</p>
         </div>
         <button class="icon-button" type="button" aria-label="Close login" disabled={submitting} on:click={closeLogin}>×</button>
       </div>
@@ -225,29 +163,6 @@
               <span class="field-help">Cannot be changed later.</span>
             </label>
 
-            <label class="field-label">
-              Display name
-              <input
-                class="field"
-                type="text"
-                required
-                minlength="2"
-                maxlength="64"
-                autocomplete="name"
-                placeholder="Your public name"
-                disabled={submitting}
-                value={displayName}
-                on:input={(event) => {
-                  displayName = event.currentTarget.value;
-                  scheduleDisplayNameCheck();
-                }}
-                on:blur={checkDisplayNameNow}
-              />
-              {#if displayNameStatus}
-                <span class:status-good={displayNameAvailable} class="field-help">{displayNameStatus}</span>
-              {/if}
-            </label>
-
             <div>
               <p class="section-label">Account type</p>
               <div class="account-type-group">
@@ -276,7 +191,7 @@
             <span>Remember me on this device.</span>
           </label>
 
-          <button class="button button-primary" type="submit" disabled={submitting || (isCreate && (checkingDisplayName || checkingUsername))}>
+          <button class="button button-primary" type="submit" disabled={submitting || (isCreate && checkingUsername)}>
             {#if submitting}
               <span class="loading-spinner button-spinner" aria-hidden="true"></span>
               {isCreate ? 'Creating...' : 'Signing in...'}

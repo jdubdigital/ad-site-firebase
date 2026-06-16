@@ -1,55 +1,41 @@
 import { getCurrentFirebaseUser, getFirebaseServices } from '$lib/firebase/client';
 import { defaultDashboardProfile, users } from '$lib/data/catalog';
-import { cleanDisplayName, createDisplayNameKey, createNameFromEmail, createSlug, createUsernameSlug } from '$lib/utils/slug';
+import { createSlug, createUsernameSlug } from '$lib/utils/slug';
 
-const demoProfileName = 'Mohegan Sun';
 const demoProfileSlug = 'mohegan-sun';
-const demoProfileDescription = 'Public profile summary for the ads, campaigns, and creative references you share.';
 
 function isStaticUserSlug(slug) {
   return users.some((user) => user.slug === slug);
 }
 
-function isStaticDisplayNameKey(key) {
-  return users.some((user) => createDisplayNameKey(user.name) === key);
-}
-
 function cleanProfileDoc(data, uid, email) {
-  const isLegacyDemoProfile =
-    data?.name === demoProfileName && (!data?.description || data.description === demoProfileDescription);
   const emailSlug = createSlug(email?.split('@')[0], uid);
-  const displayName = cleanDisplayName(
-    !data?.name || isLegacyDemoProfile ? createNameFromEmail(email) : data.name,
-    defaultDashboardProfile.name
-  );
   const userSlug = createUsernameSlug(
     !data?.userSlug || data.userSlug === demoProfileSlug ? emailSlug : data.userSlug,
     emailSlug
   );
+  const username = createUsernameSlug(data?.username || userSlug, userSlug);
+  const publicName = username || userSlug || defaultDashboardProfile.userSlug;
 
   return {
     ...defaultDashboardProfile,
     ...data,
-    name: displayName,
+    name: publicName,
     email: data?.email || email || defaultDashboardProfile.email,
-    displayNameKey: createDisplayNameKey(data?.displayNameKey || displayName, createDisplayNameKey(displayName)),
-    username: createUsernameSlug(data?.username || userSlug, userSlug),
+    username,
     userSlug
   };
 }
 
 function cleanProfileForSave(profile, user) {
   const fallbackSlug = createUsernameSlug(user.email?.split('@')[0], user.uid);
-  const name = cleanDisplayName(profile.name, createNameFromEmail(user.email));
   const userSlug = createUsernameSlug(profile.userSlug || profile.username || fallbackSlug, fallbackSlug);
-  const displayNameKey = createDisplayNameKey(name, '');
 
   return {
     ...defaultDashboardProfile,
     ...profile,
-    name,
+    name: userSlug,
     email: profile.email || user.email || defaultDashboardProfile.email,
-    displayNameKey,
     username: userSlug,
     userSlug
   };
@@ -62,17 +48,6 @@ async function hasOtherLegacyProfileWithSlug(services, slug, uid) {
   );
 
   return snapshot.docs.some((profileDoc) => profileDoc.id !== uid);
-}
-
-async function hasOtherLegacyProfileWithDisplayName(services, name, key, uid) {
-  const { collection, getDocs, limit, query, where } = services.firestoreApi;
-  const profiles = collection(services.db, 'profiles');
-  const [keySnapshot, nameSnapshot] = await Promise.all([
-    getDocs(query(profiles, where('displayNameKey', '==', key), limit(2))),
-    getDocs(query(profiles, where('name', '==', name), limit(2)))
-  ]);
-
-  return [...keySnapshot.docs, ...nameSnapshot.docs].some((profileDoc) => profileDoc.id !== uid);
 }
 
 async function syncProfileToAds(services, profile, uid) {
@@ -120,21 +95,6 @@ export async function checkUserSlugAvailable(slug, ownerUid = '') {
   return !(await hasOtherLegacyProfileWithSlug(services, cleanSlug, ownerUid));
 }
 
-export async function checkDisplayNameAvailable(name, ownerUid = '') {
-  const cleanName = cleanDisplayName(name, '');
-  const cleanKey = createDisplayNameKey(cleanName, '');
-  if (cleanName.length < 2 || !cleanKey || isStaticDisplayNameKey(cleanKey)) return false;
-
-  const services = await getFirebaseServices();
-  if (!services) return false;
-  const { doc, getDoc } = services.firestoreApi;
-
-  const displayNameSnapshot = await getDoc(doc(services.db, 'displayNames', cleanKey));
-  if (displayNameSnapshot.exists() && displayNameSnapshot.data().ownerUid !== ownerUid) return false;
-
-  return !(await hasOtherLegacyProfileWithDisplayName(services, cleanName, cleanKey, ownerUid));
-}
-
 export async function setDashboardProfile(profile) {
   const services = await getFirebaseServices();
   const user = await getCurrentFirebaseUser();
@@ -146,13 +106,8 @@ export async function setDashboardProfile(profile) {
     throw new Error('That username is already taken.');
   }
 
-  if (!(await checkDisplayNameAvailable(nextProfile.name, user.uid))) {
-    throw new Error('That display name is already taken.');
-  }
-
   const profileRef = doc(services.db, 'profiles', user.uid);
   const usernameRef = doc(services.db, 'usernames', nextProfile.userSlug);
-  const displayNameRef = doc(services.db, 'displayNames', nextProfile.displayNameKey);
 
   const savedProfile = await runTransaction(services.db, async (transaction) => {
     const profileSnapshot = await transaction.get(profileRef);
@@ -164,24 +119,10 @@ export async function setDashboardProfile(profile) {
       throw new Error('Username cannot be changed after account creation.');
     }
 
-    const oldDisplayNameRef =
-      currentProfile.displayNameKey && currentProfile.displayNameKey !== nextProfile.displayNameKey
-        ? doc(services.db, 'displayNames', currentProfile.displayNameKey)
-        : null;
     const usernameSnapshot = await transaction.get(usernameRef);
-    const displayNameSnapshot = await transaction.get(displayNameRef);
-    const oldDisplayNameSnapshot = oldDisplayNameRef ? await transaction.get(oldDisplayNameRef) : null;
 
     if (usernameSnapshot.exists() && usernameSnapshot.data().ownerUid !== user.uid) {
       throw new Error('That username is already taken.');
-    }
-
-    if (displayNameSnapshot.exists() && displayNameSnapshot.data().ownerUid !== user.uid) {
-      throw new Error('That display name is already taken.');
-    }
-
-    if (oldDisplayNameRef && oldDisplayNameSnapshot?.exists() && oldDisplayNameSnapshot.data().ownerUid === user.uid) {
-      transaction.delete(oldDisplayNameRef);
     }
 
     transaction.set(
@@ -190,17 +131,6 @@ export async function setDashboardProfile(profile) {
         ownerUid: user.uid,
         username: nextProfile.username,
         userSlug: nextProfile.userSlug,
-        updatedAt: serverTimestamp()
-      },
-      { merge: true }
-    );
-
-    transaction.set(
-      displayNameRef,
-      {
-        ownerUid: user.uid,
-        name: nextProfile.name,
-        displayNameKey: nextProfile.displayNameKey,
         updatedAt: serverTimestamp()
       },
       { merge: true }

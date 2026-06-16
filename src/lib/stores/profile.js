@@ -1,7 +1,6 @@
 import { get, writable } from 'svelte/store';
 import { defaultDashboardProfile } from '$lib/data/catalog';
 import {
-  checkDisplayNameAvailable as checkProfileDisplayNameAvailable,
   checkUserSlugAvailable as checkProfileSlugAvailable,
   getDashboardProfile,
   setDashboardProfile
@@ -27,8 +26,4 @@ export async function saveProfile(updates) {
 
 export async function checkUserSlugAvailable(slug, currentSlug = '') {
   return checkProfileSlugAvailable(slug, currentSlug);
-}
-
-export async function checkDisplayNameAvailable(name, currentNameKey = '') {
-  return checkProfileDisplayNameAvailable(name, currentNameKey);
 }
