@@ -9,7 +9,6 @@
   import { ads, deleteAd, hydrateAds } from '$lib/stores/archive';
   import { favoriteUsers } from '$lib/stores/favorites';
   import { profile, saveProfile } from '$lib/stores/profile';
-  import { openSubmit } from '$lib/stores/ui';
   import {
     getAdChronology,
     getAdTypeLabel,
@@ -483,7 +482,7 @@
               </div>
               <div class="row-actions post-actions">
                 <span class="muted">{ad.likes} likes</span>
-                <button class="button button-secondary" type="button" on:click={() => openSubmit(ad.id)}>
+                <button class="button button-secondary" type="button" on:click={() => goto(`/submit?edit=${encodeURIComponent(String(ad.id))}`)}>
                   <Edit3 size={17} strokeWidth={2.25} aria-hidden="true" />
                   Edit
                 </button>

@@ -142,9 +142,30 @@ function encodePreviewPath(path) {
     .join('/');
 }
 
-function selectEntryPath(paths) {
+function pathMatchesSize(path, size) {
+  if (!size) return false;
+  const normalizedSize = String(size).toLowerCase().replace(/\s+/g, '');
+  const normalizedPath = String(path || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ');
+  const [width, height] = normalizedSize.split('x');
+
+  return (
+    normalizedPath.includes(normalizedSize) ||
+    (width && height && new RegExp(`(^|\\D)${width}\\D+${height}(\\D|$)`).test(normalizedPath))
+  );
+}
+
+function selectEntryPath(paths, preferredSize = '') {
   const htmlPaths = paths.filter((path) => ['html', 'htm'].includes(extensionForPath(path)));
   if (!htmlPaths.length) return '';
+
+  const matchingSizePaths = preferredSize ? htmlPaths.filter((path) => pathMatchesSize(path, preferredSize)) : [];
+  if (matchingSizePaths.length) {
+    return (
+      matchingSizePaths.find((path) => path.toLowerCase().endsWith('/index.html')) ||
+      matchingSizePaths.find((path) => path.toLowerCase().endsWith('/index.htm')) ||
+      matchingSizePaths[0]
+    );
+  }
 
   return (
     htmlPaths.find((path) => path.toLowerCase() === 'index.html') ||
@@ -155,7 +176,7 @@ function selectEntryPath(paths) {
   );
 }
 
-async function extractHtml5Archive(adId, storagePath) {
+async function extractHtml5Archive(adId, storagePath, preferredSize = '') {
   if (!storagePath || !storagePath.endsWith('.zip')) {
     throw httpError(400, 'HTML5 preview extraction needs a ZIP file uploaded to Firebase Storage.');
   }
@@ -198,7 +219,7 @@ async function extractHtml5Archive(adId, storagePath) {
   if (!files.length) throw httpError(400, 'The ZIP did not contain any previewable files.');
   if (files.length > html5MaxFiles) throw httpError(400, `HTML5 ZIPs can contain at most ${html5MaxFiles} files.`);
 
-  const entryPath = selectEntryPath(files.map((file) => file.path));
+  const entryPath = selectEntryPath(files.map((file) => file.path), preferredSize);
   if (!entryPath) throw httpError(400, 'The ZIP needs an index.html or another HTML entry file.');
 
   const basePath = `html5Previews/${adId}`;
@@ -221,7 +242,8 @@ async function extractHtml5Archive(adId, storagePath) {
     htmlPreviewEntryPath: entryPath,
     htmlPreviewUrl: `/api/html5/${adId}/${encodePreviewPath(entryPath)}`,
     htmlPreviewFileCount: files.length,
-    htmlPreviewStatus: 'ready'
+    htmlPreviewStatus: 'ready',
+    htmlPreviewPreferredSize: preferredSize || null
   };
 }
 
@@ -244,7 +266,7 @@ async function handleHtml5Extraction(req, res) {
   if (ad.type !== 'html5') throw httpError(400, 'Only HTML5 ZIP ads can be extracted.');
 
   try {
-    const previewFields = await extractHtml5Archive(adId, ad.mediaStoragePath || '');
+    const previewFields = await extractHtml5Archive(adId, ad.mediaStoragePath || '', ad.size || '');
     await adRef.update({
       ...previewFields,
       htmlPreviewError: null,

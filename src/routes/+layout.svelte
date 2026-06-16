@@ -5,7 +5,6 @@
   import FilterPanel from '$lib/components/FilterPanel.svelte';
   import Header from '$lib/components/Header.svelte';
   import LoginModal from '$lib/components/LoginModal.svelte';
-  import SubmitModal from '$lib/components/SubmitModal.svelte';
   import { initializeAccount } from '$lib/stores/account';
   import { adsReady, hydrateAds } from '$lib/stores/archive';
   import { hydrateFavorites } from '$lib/stores/favorites';
@@ -63,6 +62,5 @@
       <p>© 2026 Ad Archive</p>
     </footer>
     <LoginModal />
-    <SubmitModal />
   {/if}
 </div>
