@@ -122,80 +122,76 @@
     </div>
 
     {#if ad && hasHtmlProgrammaticPreview}
-      <article class="publisher-sim">
-        <section class="publisher-band">
-          <p class="eyebrow">Publisher Feature</p>
-          <h2>How brands are adapting creative for attention-light environments</h2>
-          <p>
-            This simulated article gives the uploaded creative real page context: scrolling, viewport changes, and a normal content rhythm
-            around the ad slot.
+      <div class="live-preview-workbench">
+        <aside class="publisher-sidebar">
+          <h2>Preview Notes</h2>
+          <p class="live-preview-note">
+            Scroll the page to move the creative through the viewport. This simulates a programmatic slot on a real web page and sends
+            position and viewability signals to the ad.
           </p>
-        </section>
+          <dl class="detail-list">
+            <div>
+              <dt>Format</dt>
+              <dd>{getAdTypeLabel(ad.type)}</dd>
+            </div>
+            <div>
+              <dt>Medium</dt>
+              <dd>{getMediumLabel(ad.medium)}</dd>
+            </div>
+            <div>
+              <dt>Size</dt>
+              <dd>{ad.size}</dd>
+            </div>
+            <div>
+              <dt>Preview</dt>
+              <dd>{bridgeReady ? 'Runtime bridge ready' : 'Waiting for bridge'}</dd>
+            </div>
+            <div>
+              <dt>Scale</dt>
+              <dd>{Math.round(frameScale * 100)}%</dd>
+            </div>
+          </dl>
+        </aside>
 
-        <div class="publisher-layout">
-          <main class="publisher-story">
-            <p>
-              Performance creative has moved beyond flat uploads. Rich display, mobile placements, and dynamic programmatic units often depend on
-              runtime signals from the page around them.
-            </p>
-            <p>
-              The ad below runs in an isolated iframe. The preview page sends viewport and viewability state to the creative while preserving the
-              regular archive experience everywhere else.
-            </p>
+        <main class="live-ad-stage" aria-label={`${ad.title} live preview`}>
+          <div class="live-placement-intro">
+            <p class="eyebrow">Simulated Page Placement</p>
+            <p>Scroll down to bring the ad into view, then keep scrolling to test scroll-reactive creative behavior.</p>
+          </div>
 
-            <aside class="publisher-ad-callout">
-              <span>Advertisement</span>
-              <div bind:this={adSlot} class="live-ad-slot" style={slotStyle}>
-                <div class="live-ad-frame-shell" style={frameShellStyle}>
-                  <iframe
-                    bind:this={liveFrame}
-                    src={ad.htmlPreviewUrl}
-                    title={`${ad.title} live programmatic preview`}
-                    sandbox="allow-scripts"
-                    referrerpolicy="no-referrer"
-                    style={frameStyle}
-                    on:load={handleFrameLoad}
-                  ></iframe>
-                </div>
+          <div class="live-placement-content" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+
+          <div class="live-placement-ad">
+            <span class="live-placement-label">Ad placement</span>
+            <div bind:this={adSlot} class="live-ad-slot" style={slotStyle}>
+              <div class="live-ad-frame-shell" style={frameShellStyle}>
+                <iframe
+                  bind:this={liveFrame}
+                  src={ad.htmlPreviewUrl}
+                  title={`${ad.title} live programmatic preview`}
+                  sandbox="allow-scripts"
+                  referrerpolicy="no-referrer"
+                  style={frameStyle}
+                  on:load={handleFrameLoad}
+                ></iframe>
               </div>
-            </aside>
+            </div>
+          </div>
 
-            <p>
-              Keep scrolling to test how the ad behaves as it moves in and out of view. The debug panel tracks visible percentage, total visible
-              time, and simulated impression state.
-            </p>
-            <p>
-              This is intentionally separate from the main archive feed so that live rich-media behavior does not slow down browsing or loosen the
-              safer default preview mode.
-            </p>
-            <p>
-              Resize the browser to test responsive behavior. Runtime updates are throttled with requestAnimationFrame and cleaned up when you leave
-              this route.
-            </p>
-          </main>
+          <div class="live-placement-content live-placement-content-after" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </main>
 
-          <aside class="publisher-sidebar">
-            <h2>Preview Notes</h2>
-            <p class="muted">Scripts are allowed only inside this live preview iframe. Popups and top-window navigation are not allowed.</p>
-            <dl class="detail-list">
-              <div>
-                <dt>Format</dt>
-                <dd>{getAdTypeLabel(ad.type)}</dd>
-              </div>
-              <div>
-                <dt>Size</dt>
-                <dd>{ad.size}</dd>
-              </div>
-              <div>
-                <dt>Preview</dt>
-                <dd>{bridgeReady ? 'Runtime bridge ready' : 'Waiting for bridge'}</dd>
-              </div>
-            </dl>
-          </aside>
-        </div>
-      </article>
-
-      <LivePreviewDebugPanel {runtimeState} logs={runtimeLogs} {impressionFired} {bridgeReady} {bridgeInfo} />
+        <LivePreviewDebugPanel {runtimeState} logs={runtimeLogs} {impressionFired} {bridgeReady} {bridgeInfo} />
+      </div>
     {:else if ad && !isHtmlProgrammatic}
       <div class="empty-state">
         <h1>Live preview is only for HTML programmatic ads</h1>

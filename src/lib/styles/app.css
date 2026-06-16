@@ -1483,76 +1483,97 @@ video {
   line-height: 1;
 }
 
-.publisher-sim {
-  display: grid;
-  gap: 1.25rem;
-  min-width: 0;
-}
-
-.publisher-band,
-.publisher-story,
 .publisher-sidebar,
-.live-debug-panel {
+.live-debug-panel,
+.live-ad-stage {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-soft);
 }
 
-.publisher-band {
-  padding: clamp(1.25rem, 4vw, 2.5rem);
-}
-
-.publisher-band h2 {
-  max-width: 52rem;
-  margin: 0.25rem 0 0.65rem;
-  font-size: clamp(2rem, 5vw, 4rem);
-  line-height: 0.98;
-}
-
-.publisher-band p {
-  max-width: 42rem;
-  margin: 0;
-  color: var(--muted);
-  font-size: 1.05rem;
-  line-height: 1.6;
-}
-
-.publisher-layout {
+.live-preview-workbench {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(15rem, 20rem);
+  grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr) minmax(18rem, 24rem);
   gap: 1.25rem;
   align-items: start;
   min-width: 0;
 }
 
-.publisher-story {
+.live-ad-stage {
   display: grid;
-  gap: 1.1rem;
+  align-content: start;
+  justify-items: center;
+  gap: 1rem;
   min-width: 0;
+  overflow: visible;
   padding: clamp(1rem, 3vw, 1.5rem);
 }
 
-.publisher-story > p {
-  max-width: 45rem;
-  margin: 0;
-  color: var(--muted);
-  font-size: 1.02rem;
-  line-height: 1.7;
-}
-
-.publisher-ad-callout {
-  display: grid;
-  gap: 0.5rem;
-  justify-items: center;
+.live-placement-intro,
+.live-placement-content,
+.live-placement-ad {
+  width: min(100%, 42rem);
   min-width: 0;
-  margin-block: 1.35rem;
-  border-block: 1px solid var(--border);
-  padding-block: 1.35rem;
 }
 
-.publisher-ad-callout > span {
+.live-placement-intro {
+  justify-self: stretch;
+}
+
+.live-placement-intro p {
+  margin: 0.35rem 0 0;
   color: var(--muted);
-  font-size: 0.72rem;
+  line-height: 1.55;
+}
+
+.live-placement-content {
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+  min-height: clamp(14rem, 34vh, 24rem);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-muted);
+  padding: clamp(1rem, 3vw, 1.35rem);
+}
+
+.live-placement-content span {
+  display: block;
+  height: 0.7rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted) 18%, transparent);
+}
+
+.live-placement-content span:nth-child(1) {
+  width: 72%;
+}
+
+.live-placement-content span:nth-child(2) {
+  width: 92%;
+}
+
+.live-placement-content span:nth-child(3) {
+  width: 58%;
+}
+
+.live-placement-content span:nth-child(4) {
+  width: 84%;
+}
+
+.live-placement-content-after {
+  min-height: clamp(12rem, 30vh, 22rem);
+}
+
+.live-placement-ad {
+  display: grid;
+  justify-items: center;
+  gap: 0.55rem;
+  padding-block: clamp(0.75rem, 5vh, 3rem);
+}
+
+.live-placement-label {
+  color: var(--muted);
+  font-size: 0.76rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1565,7 +1586,7 @@ video {
   place-items: center;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
-  border-radius: var(--radius);
+  border-radius: 0;
   background: repeating-linear-gradient(
       45deg,
       color-mix(in srgb, var(--accent) 8%, transparent),
@@ -1604,14 +1625,20 @@ video {
   font-size: 1rem;
 }
 
+.live-preview-note {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
 .live-debug-panel {
   position: sticky;
-  bottom: 1rem;
+  top: 6.5rem;
   z-index: 20;
-  width: min(100%, 50rem);
-  margin: 1.25rem auto 0;
+  width: 100%;
+  margin: 0;
   overflow: hidden;
-  box-shadow: var(--shadow);
 }
 
 .live-debug-toggle {
@@ -2178,7 +2205,7 @@ video {
   }
 
   .live-preview-header,
-  .publisher-layout {
+  .live-preview-workbench {
     display: grid;
     grid-template-columns: 1fr;
   }
@@ -2187,23 +2214,38 @@ video {
     width: 100%;
   }
 
-  .publisher-band,
-  .publisher-story,
-  .publisher-sidebar {
+  .publisher-sidebar,
+  .live-ad-stage {
     padding: 0.95rem;
   }
 
-  .publisher-sidebar {
+  .publisher-sidebar,
+  .live-debug-panel {
     position: static;
   }
 
-  .publisher-ad-callout {
-    margin-block: 1rem;
-    padding-block: 1rem;
+  .live-ad-stage {
+    min-height: 0;
+    gap: 0.85rem;
+  }
+
+  .live-placement-content {
+    min-height: clamp(8rem, 24vh, 13rem);
+  }
+
+  .live-placement-content-after {
+    min-height: clamp(7rem, 22vh, 12rem);
+  }
+
+  .live-placement-ad {
+    padding-block: 0.35rem;
+  }
+
+  .live-placement-label {
+    font-size: 0.68rem;
   }
 
   .live-debug-panel {
-    bottom: 0.65rem;
     margin-top: 1rem;
   }
 
