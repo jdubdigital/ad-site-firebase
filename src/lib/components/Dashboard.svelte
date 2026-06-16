@@ -5,7 +5,7 @@
   import Edit3 from '@lucide/svelte/icons/edit-3';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import { getPublicProfileBySlug } from '$lib/repositories/profile';
-  import { signedInEmail, signOut } from '$lib/stores/account';
+  import { signedInEmail, signOut, wipeCurrentAccount } from '$lib/stores/account';
   import { ads, deleteAd, hydrateAds } from '$lib/stores/archive';
   import { favoriteUsers } from '$lib/stores/favorites';
   import { profile, saveProfile } from '$lib/stores/profile';
@@ -27,6 +27,8 @@
   let copyStatus = '';
   let deleteStatus = '';
   let deletingAdIds = new Set();
+  let deletingAccount = false;
+  let accountDeleteStatus = '';
   let favoriteUserDetails = [];
   let favoriteUserDetailsRequest = 0;
 
@@ -243,6 +245,39 @@
   async function handleSignOut() {
     await signOut();
     goto('/');
+  }
+
+  async function handleDeleteAccount() {
+    if (deletingAccount) return;
+
+    const usernameLabel = currentProfile.username || currentProfile.userSlug;
+    const firstConfirm = window.confirm(
+      'Delete your account permanently? This removes your profile, posts, uploads, favorites, and sign-in access.'
+    );
+    if (!firstConfirm) return;
+
+    const typed = window.prompt(`Type ${usernameLabel} to confirm account deletion.`);
+    if (typed !== usernameLabel) {
+      accountDeleteStatus = 'Account deletion canceled.';
+      setTimeout(() => (accountDeleteStatus = ''), 2200);
+      return;
+    }
+
+    deletingAccount = true;
+    accountDeleteStatus = '';
+
+    try {
+      await wipeCurrentAccount();
+      if (browser) {
+        window.location.href = '/';
+        return;
+      }
+      goto('/');
+    } catch (error) {
+      accountDeleteStatus = error?.message || 'Unable to delete this account.';
+    } finally {
+      deletingAccount = false;
+    }
   }
 
   $: if (currentProfile && !username) syncFields();
@@ -472,6 +507,16 @@
     </div>
 
     <div class="dashboard-footer-actions">
+      <div class="danger-zone">
+        <button class="button button-danger" type="button" disabled={deletingAccount} on:click={handleDeleteAccount}>
+          <Trash2 size={17} strokeWidth={2.25} aria-hidden="true" />
+          {deletingAccount ? 'Deleting account...' : 'Delete account'}
+        </button>
+        <p class="muted">Permanently removes your account, uploads, posts, profile, and saved user data.</p>
+        {#if accountDeleteStatus}
+          <p class="status">{accountDeleteStatus}</p>
+        {/if}
+      </div>
       <button class="button button-secondary" type="button" on:click={handleSignOut}>Sign out</button>
     </div>
   </div>

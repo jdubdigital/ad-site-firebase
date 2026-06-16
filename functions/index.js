@@ -263,6 +263,74 @@ async function handleHtml5Extraction(req, res) {
   }
 }
 
+async function deleteDocsInQuery(querySnapshot) {
+  if (querySnapshot.empty) return;
+
+  const docs = querySnapshot.docs.slice();
+  while (docs.length) {
+    const batch = db.batch();
+    docs.splice(0, 400).forEach((docSnapshot) => batch.delete(docSnapshot.ref));
+    await batch.commit();
+  }
+}
+
+async function deleteFilesByPrefix(prefix) {
+  if (!prefix) return;
+
+  try {
+    await bucket.deleteFiles({ prefix, force: true });
+  } catch (error) {
+    logger.warn('Storage prefix delete skipped', { prefix, message: error.message });
+  }
+}
+
+async function handleAccountDeletion(req, res) {
+  if (req.method !== 'DELETE') {
+    sendJson(res, 405, { error: 'Method not allowed' });
+    return;
+  }
+
+  const user = await requireUser(req);
+  const profileRef = db.collection('profiles').doc(user.uid);
+  const userStateRef = db.collection('userState').doc(user.uid);
+  const [profileSnapshot, userAdsSnapshot, usernamesSnapshot, displayNamesSnapshot] = await Promise.all([
+    profileRef.get(),
+    db.collection('ads').where('ownerUid', '==', user.uid).get(),
+    db.collection('usernames').where('ownerUid', '==', user.uid).get(),
+    db.collection('displayNames').where('ownerUid', '==', user.uid).get()
+  ]);
+
+  const html5PreviewPrefixes = [
+    ...new Set(
+      userAdsSnapshot.docs
+        .map((docSnapshot) => docSnapshot.data()?.htmlPreviewBasePath || `html5Previews/${docSnapshot.id}`)
+        .filter(Boolean)
+    )
+  ];
+
+  await Promise.all([
+    deleteFilesByPrefix(`ads/${user.uid}/`),
+    deleteFilesByPrefix(`avatars/${user.uid}/`),
+    ...html5PreviewPrefixes.map((prefix) => deleteFilesByPrefix(`${prefix}/`))
+  ]);
+
+  await Promise.all([
+    deleteDocsInQuery(userAdsSnapshot),
+    deleteDocsInQuery(usernamesSnapshot),
+    deleteDocsInQuery(displayNamesSnapshot),
+    profileSnapshot.exists ? profileRef.delete() : Promise.resolve(),
+    userStateRef.delete().catch(() => {})
+  ]);
+
+  await auth.deleteUser(user.uid);
+
+  sendJson(res, 200, {
+    ok: true,
+    deletedAds: userAdsSnapshot.size,
+    deletedAt: new Date().toISOString()
+  });
+}
+
 function previewContentHeaders(contentType) {
   const headers = {
     'cache-control': contentType.startsWith('text/html') ? 'no-cache' : 'public, max-age=3600',
@@ -514,6 +582,11 @@ exports.api = onRequest(async (req, res) => {
 
     if (path === '/html5/extract') {
       await handleHtml5Extraction(req, res);
+      return;
+    }
+
+    if (path === '/account') {
+      await handleAccountDeletion(req, res);
       return;
     }
 

@@ -1,10 +1,24 @@
 import { writable } from 'svelte/store';
 import { isFirebaseConfigured } from '$lib/firebase/client';
 import * as firebaseAccount from '$lib/repositories/account.firebase';
+import { browser } from '$app/environment';
 
 export const signedInEmail = writable('');
 export const authUser = writable(null);
 export const authReady = writable(!isFirebaseConfigured);
+
+function clearLocalAccountData() {
+  if (!browser) return;
+
+  [
+    'dashboardProfile',
+    'favoriteUsers',
+    'favoritePosters',
+    'likedAds',
+    'submittedAds',
+    'editedAds'
+  ].forEach((key) => localStorage.removeItem(key));
+}
 
 export function initializeAccount(onChange = () => {}) {
   if (!isFirebaseConfigured) {
@@ -47,6 +61,17 @@ export async function createAccount(email, password) {
 export async function deleteCurrentAccount() {
   if (isFirebaseConfigured) {
     await firebaseAccount.deleteCurrentAccount();
+  }
+
+  authUser.set(null);
+  signedInEmail.set('');
+}
+
+export async function wipeCurrentAccount() {
+  if (isFirebaseConfigured) {
+    await firebaseAccount.wipeCurrentAccount();
+  } else {
+    clearLocalAccountData();
   }
 
   authUser.set(null);

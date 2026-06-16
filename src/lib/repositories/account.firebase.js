@@ -40,6 +40,28 @@ export async function deleteCurrentAccount() {
   await services.authApi.deleteUser(user);
 }
 
+export async function wipeCurrentAccount() {
+  const services = await getFirebaseServices();
+  const user = services?.auth.currentUser;
+  if (!services || !user) throw new Error('Sign in before deleting your account.');
+
+  const response = await fetch('/api/account', {
+    method: 'DELETE',
+    headers: {
+      authorization: `Bearer ${await user.getIdToken()}`,
+      'content-type': 'application/json'
+    }
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(body.error || 'Unable to delete this account.');
+  }
+
+  await services.authApi.signOut(services.auth).catch(() => {});
+  return body;
+}
+
 export async function signOut() {
   const services = await getFirebaseServices();
   if (!services) return;
