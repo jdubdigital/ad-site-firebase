@@ -51,12 +51,12 @@
   $: isProgrammatic = analysis?.type === 'html5';
   $: resolvedManualSize = resolveSizeValue(manualSize, customWidth, customHeight);
   $: programmaticSizeValues = showcaseSizeRows.map((row) => resolveSizeValue(row.size, row.customWidth, row.customHeight));
-  $: selectedSizes = resolveSelectedSizes();
+  $: selectedSizes = resolveSelectedSizes(analysis, isProgrammatic, programmaticResponsive, resolvedManualSize, programmaticSizeValues);
   $: activeSizeLabel = selectedSizes.length > 1 ? `${selectedSizes.length} sizes` : selectedSizes[0] || 'Unknown size';
   $: hasInvalidShowcaseSize = isProgrammatic && programmaticSizeValues.some((sizeValue) => !sizeValue);
   $: hasDuplicateShowcaseSizes =
     isProgrammatic && programmaticSizeValues.filter(Boolean).length !== selectedSizes.length;
-  $: canAddShowcaseSize = isProgrammatic && !isEditing && showcaseSizeRows.length < maxShowcaseSizes;
+  $: canAddShowcaseSize = isProgrammatic && programmaticResponsive && !isEditing && showcaseSizeRows.length < maxShowcaseSizes;
   $: fileLimitLabel = isFirebaseConfigured ? 'Max 10 MB' : 'Max 2.5 MB for local browser storage';
 
   $: if (browser && $authReady && !$signedInEmail) {
@@ -71,10 +71,12 @@
     else resetForm();
   }
 
-  function resolveSelectedSizes() {
-    if (!analysis) return [];
-    if (!isProgrammatic) return [resolvedManualSize].filter(Boolean);
-    return [...new Set(programmaticSizeValues.filter(Boolean))];
+  function resolveSelectedSizes(currentAnalysis, programmatic, responsive, primarySize, programmaticSizes) {
+    if (!currentAnalysis) return [];
+    if (!programmatic) return [primarySize].filter(Boolean);
+
+    const sizesToUse = responsive ? programmaticSizes : programmaticSizes.slice(0, 1);
+    return [...new Set(sizesToUse.filter(Boolean))];
   }
 
   function resolveSizeValue(sizeValue, width, height) {
@@ -114,6 +116,13 @@
   function addShowcaseSize() {
     if (!canAddShowcaseSize) return;
     showcaseSizeRows = [...showcaseSizeRows, createSizeRow('300x250')];
+  }
+
+  function setResponsiveMode(nextResponsive) {
+    programmaticResponsive = nextResponsive;
+    if (!nextResponsive && showcaseSizeRows.length > 1) {
+      showcaseSizeRows = showcaseSizeRows.slice(0, 1);
+    }
   }
 
   function removeShowcaseSize(index) {
@@ -462,15 +471,19 @@
                 <div>
                   <p class="section-label">Responsive</p>
                   <div class="segmented-control">
-                    <button class:active={!programmaticResponsive} type="button" on:click={() => (programmaticResponsive = false)}>Fixed</button>
-                    <button class:active={programmaticResponsive} type="button" on:click={() => (programmaticResponsive = true)}>Responsive</button>
+                    <button class:active={!programmaticResponsive} type="button" on:click={() => setResponsiveMode(false)}>Fixed</button>
+                    <button class:active={programmaticResponsive} type="button" on:click={() => setResponsiveMode(true)}>Responsive</button>
                   </div>
                 </div>
 
                 <div class="display-size-list">
                   <div>
-                    <p class="section-label">Showcase sizes</p>
-                    <p class="muted">Choose up to five display sizes to publish as separate archive records.</p>
+                    <p class="section-label">{programmaticResponsive ? 'Showcase sizes' : 'Display size'}</p>
+                    <p class="muted">
+                      {programmaticResponsive
+                        ? 'Choose up to five display sizes to publish as separate archive records.'
+                        : 'Choose the fixed display size for this package.'}
+                    </p>
                   </div>
 
                   {#each showcaseSizeRows as row, index (row.id)}
@@ -496,7 +509,7 @@
                         </label>
                       {/if}
 
-                      {#if !isEditing && showcaseSizeRows.length > 1}
+                      {#if programmaticResponsive && !isEditing && showcaseSizeRows.length > 1}
                         <button class="icon-button button-danger" type="button" aria-label={`Remove display size ${index + 1}`} on:click={() => removeShowcaseSize(index)}>
                           <Trash2 size={17} strokeWidth={2.25} aria-hidden="true" />
                         </button>
