@@ -35,19 +35,9 @@ service cloud.firestore {
         && slug.matches('^[a-z0-9][a-z0-9-]{1,46}[a-z0-9]$');
     }
 
-    function validDisplayNameKey(key) {
-      return key is string
-        && key.matches('^[a-z0-9][a-z0-9-]{0,62}[a-z0-9]$');
-    }
-
     function profileHasOwnedUsername(uid) {
       return validUsernameSlug(request.resource.data.userSlug)
         && getAfter(/databases/$(database)/documents/usernames/$(request.resource.data.userSlug)).data.ownerUid == uid;
-    }
-
-    function profileHasOwnedDisplayName(uid) {
-      return validDisplayNameKey(request.resource.data.displayNameKey)
-        && getAfter(/databases/$(database)/documents/displayNames/$(request.resource.data.displayNameKey)).data.ownerUid == uid;
     }
 
     function profileUsernameUnchanged() {
@@ -71,13 +61,11 @@ service cloud.firestore {
       allow read: if true;
       allow create: if owns(uid)
         && request.resource.data.ownerUid == request.auth.uid
-        && profileHasOwnedUsername(uid)
-        && profileHasOwnedDisplayName(uid);
+        && profileHasOwnedUsername(uid);
       allow update: if owns(uid)
         && request.resource.data.ownerUid == request.auth.uid
         && profileUsernameUnchanged()
-        && profileHasOwnedUsername(uid)
-        && profileHasOwnedDisplayName(uid);
+        && profileHasOwnedUsername(uid);
       allow delete: if owns(uid);
     }
 
@@ -97,15 +85,7 @@ service cloud.firestore {
 
     match /displayNames/{key} {
       allow read: if true;
-      allow create: if signedIn()
-        && validDisplayNameKey(key)
-        && request.resource.data.ownerUid == request.auth.uid
-        && request.resource.data.displayNameKey == key;
-      allow update: if signedIn()
-        && validDisplayNameKey(key)
-        && resource.data.ownerUid == request.auth.uid
-        && request.resource.data.ownerUid == resource.data.ownerUid
-        && request.resource.data.displayNameKey == key;
+      allow create, update: if false;
       allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
     }
 
