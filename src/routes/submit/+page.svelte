@@ -4,6 +4,8 @@
   import { page } from '$app/stores';
   import CheckCircle2 from '@lucide/svelte/icons/check-circle-2';
   import FileArchive from '@lucide/svelte/icons/file-archive';
+  import Plus from '@lucide/svelte/icons/plus';
+  import Trash2 from '@lucide/svelte/icons/trash-2';
   import UploadCloud from '@lucide/svelte/icons/upload-cloud';
   import { get } from 'svelte/store';
   import { categories, mediums, sizes } from '$lib/data/catalog';
@@ -17,6 +19,9 @@
 
   const localMaxFileSize = 2500000;
   const firebaseMaxFileSize = 10 * 1024 * 1024;
+  const maxShowcaseSizes = 5;
+
+  let nextShowcaseRowId = 1;
 
   let pendingFile = null;
   let pendingMediaData = '';
@@ -29,11 +34,11 @@
   let notes = '';
   let rights = false;
   let transparency = false;
-  let zipMode = 'all';
-  let selectedZipSize = '300x250';
+  let programmaticResponsive = false;
   let manualSize = '300x250';
   let customWidth = '';
   let customHeight = '';
+  let showcaseSizeRows = [createSizeRow('300x250')];
   let status = '';
   let submitting = false;
   let submitProgress = 0;
@@ -43,12 +48,15 @@
   $: editId = $page.url.searchParams.get('edit');
   $: editingAd = editId ? $ads.find((ad) => String(ad.id) === String(editId)) : null;
   $: isEditing = Boolean(editingAd);
-  $: detectedSizes = analysis?.sizes || [];
   $: isProgrammatic = analysis?.type === 'html5';
-  $: resolvedManualSize =
-    manualSize === 'custom' ? (customWidth && customHeight ? `${Number(customWidth)}x${Number(customHeight)}` : '') : manualSize;
+  $: resolvedManualSize = resolveSizeValue(manualSize, customWidth, customHeight);
+  $: programmaticSizeValues = showcaseSizeRows.map((row) => resolveSizeValue(row.size, row.customWidth, row.customHeight));
   $: selectedSizes = resolveSelectedSizes();
   $: activeSizeLabel = selectedSizes.length > 1 ? `${selectedSizes.length} sizes` : selectedSizes[0] || 'Unknown size';
+  $: hasInvalidShowcaseSize = isProgrammatic && programmaticSizeValues.some((sizeValue) => !sizeValue);
+  $: hasDuplicateShowcaseSizes =
+    isProgrammatic && programmaticSizeValues.filter(Boolean).length !== selectedSizes.length;
+  $: canAddShowcaseSize = isProgrammatic && !isEditing && showcaseSizeRows.length < maxShowcaseSizes;
   $: fileLimitLabel = isFirebaseConfigured ? 'Max 10 MB' : 'Max 2.5 MB for local browser storage';
 
   $: if (browser && $authReady && !$signedInEmail) {
@@ -65,10 +73,52 @@
 
   function resolveSelectedSizes() {
     if (!analysis) return [];
-    if (!isProgrammatic) return [analysis.size].filter(Boolean);
-    if (!detectedSizes.length) return [resolvedManualSize].filter(Boolean);
-    if (detectedSizes.length > 1 && zipMode === 'all') return detectedSizes;
-    return [selectedZipSize || resolvedManualSize].filter(Boolean);
+    if (!isProgrammatic) return [resolvedManualSize].filter(Boolean);
+    return [...new Set(programmaticSizeValues.filter(Boolean))];
+  }
+
+  function resolveSizeValue(sizeValue, width, height) {
+    if (sizeValue !== 'custom') return sizeValue || '';
+
+    const cleanWidth = Number(width);
+    const cleanHeight = Number(height);
+    if (!cleanWidth || !cleanHeight) return '';
+
+    return `${Math.round(cleanWidth)}x${Math.round(cleanHeight)}`;
+  }
+
+  function createSizeRow(sizeValue = '300x250') {
+    const isPreset = sizes.includes(sizeValue);
+    const [width, height] = String(sizeValue || '').split('x');
+
+    return {
+      id: nextShowcaseRowId++,
+      size: isPreset ? sizeValue : 'custom',
+      customWidth: isPreset ? '' : width || '',
+      customHeight: isPreset ? '' : height || ''
+    };
+  }
+
+  function setPrimarySizeValue(sizeValue) {
+    const nextRow = createSizeRow(sizeValue);
+    manualSize = nextRow.size;
+    customWidth = nextRow.customWidth;
+    customHeight = nextRow.customHeight;
+  }
+
+  function setShowcaseRows(sizeValues) {
+    const values = (sizeValues || []).filter(Boolean).slice(0, maxShowcaseSizes);
+    showcaseSizeRows = (values.length ? values : ['300x250']).map((sizeValue) => createSizeRow(sizeValue));
+  }
+
+  function addShowcaseSize() {
+    if (!canAddShowcaseSize) return;
+    showcaseSizeRows = [...showcaseSizeRows, createSizeRow('300x250')];
+  }
+
+  function removeShowcaseSize(index) {
+    if (showcaseSizeRows.length <= 1) return;
+    showcaseSizeRows = showcaseSizeRows.filter((_, rowIndex) => rowIndex !== index);
   }
 
   function populateFromAd(ad) {
@@ -77,8 +127,6 @@
     analysis = {
       type: ad.type || 'image',
       label: getAdTypeLabel(ad.type),
-      size: ad.size || '300x250',
-      sizes: [ad.size || '300x250'],
       fileName: ad.mediaFileName || 'Current uploaded asset',
       title: ad.title || ''
     };
@@ -89,13 +137,9 @@
     notes = ad.notes || '';
     rights = true;
     transparency = true;
-    selectedZipSize = ad.size || '300x250';
-    manualSize = sizes.includes(ad.size) ? ad.size : 'custom';
-    if (!sizes.includes(ad.size || '')) {
-      const [width, height] = String(ad.size || '').split('x');
-      customWidth = width || '';
-      customHeight = height || '';
-    }
+    programmaticResponsive = Boolean(ad.isResponsiveCreative);
+    setPrimarySizeValue(ad.size || '300x250');
+    setShowcaseRows([ad.size || '300x250']);
     status = '';
   }
 
@@ -111,11 +155,11 @@
     notes = '';
     rights = false;
     transparency = false;
-    zipMode = 'all';
-    selectedZipSize = '300x250';
+    programmaticResponsive = false;
     manualSize = '300x250';
     customWidth = '';
     customHeight = '';
+    showcaseSizeRows = [createSizeRow('300x250')];
     status = '';
     submitProgress = 0;
     submitPhase = '';
@@ -161,8 +205,7 @@
         if (!isFirebaseConfigured) {
           status = 'Programmatic ZIP extraction needs Firebase persistence.';
         }
-        zipMode = nextAnalysis.sizes.length > 1 ? 'all' : 'single';
-        selectedZipSize = nextAnalysis.sizes[0] || selectedZipSize;
+        setShowcaseRows(selectedSizes.length ? selectedSizes : ['300x250']);
       }
     } catch (error) {
       status = error?.message || 'Unable to inspect this creative asset.';
@@ -219,7 +262,9 @@
         analysis?.fileName || pendingFile?.name || sharedAsset.mediaFileName || existingAsset.mediaFileName || ''
       ),
       notes: cleanSubmittedValue(notes),
-      type: analysis.type
+      type: analysis.type,
+      isResponsiveCreative: isProgrammatic ? Boolean(programmaticResponsive) : false,
+      showcaseSizes: isProgrammatic ? selectedSizes : [sizeValue]
     };
   }
 
@@ -236,6 +281,21 @@
 
     if (!cleanSubmittedValue(title)) {
       status = 'Enter a valid title.';
+      return;
+    }
+
+    if (!isProgrammatic && !resolvedManualSize) {
+      status = 'Choose a size for this creative.';
+      return;
+    }
+
+    if (isProgrammatic && hasInvalidShowcaseSize) {
+      status = 'Enter each programmatic display size.';
+      return;
+    }
+
+    if (isProgrammatic && hasDuplicateShowcaseSizes) {
+      status = 'Choose unique programmatic display sizes.';
       return;
     }
 
@@ -291,7 +351,7 @@
       progressForItem(totalItems - 1, totalItems, { stage: 'done', progress: 1 });
       status =
         createdAds.length > 1
-          ? `Submitted ${createdAds.length} creative sizes to the archive.`
+          ? `Submitted ${createdAds.length} display sizes to the archive.`
           : 'Submitted. The creative is now in the archive and your dashboard.';
       setTimeout(() => goto('/dashboard'), 900);
     } catch (error) {
@@ -314,7 +374,7 @@
       <div>
         <p class="eyebrow">Creative intake</p>
         <h1>{isEditing ? 'Edit creative' : 'Add to the archive'}</h1>
-        <p class="muted">Start with the asset. Ad Archive detects the format and size, then asks for the metadata people actually need.</p>
+        <p class="muted">Start with the asset, then choose the display size and archive metadata people actually need.</p>
       </div>
       <a class="button button-secondary" href="/dashboard">Back to dashboard</a>
     </div>
@@ -353,14 +413,14 @@
           </div>
           <div class="submit-step-body">
             <p class="section-label">Step 2</p>
-            <h2>Review detected details</h2>
+            <h2>Choose display details</h2>
             <div class="detected-panel">
               <div>
                 <span class="detected-label">Format</span>
                 <strong>{analysis.label}</strong>
               </div>
               <div>
-                <span class="detected-label">Size</span>
+                <span class="detected-label">Display</span>
                 <strong>{activeSizeLabel}</strong>
               </div>
               <div>
@@ -369,54 +429,88 @@
               </div>
             </div>
 
-            {#if isProgrammatic}
+            {#if !isProgrammatic}
+              <div class="field-grid two">
+                <label class="field-label">
+                  Size
+                  <select bind:value={manualSize} class="select">
+                    {#each sizes as item}
+                      <option>{item}</option>
+                    {/each}
+                    <option value="custom">Custom</option>
+                  </select>
+                </label>
+
+                {#if manualSize === 'custom'}
+                  <label class="field-label">
+                    Width
+                    <input bind:value={customWidth} class="field" type="number" min="1" max="4000" placeholder="300" />
+                  </label>
+                  <label class="field-label">
+                    Height
+                    <input bind:value={customHeight} class="field" type="number" min="1" max="4000" placeholder="250" />
+                  </label>
+                {/if}
+              </div>
+            {:else}
               <div class="programmatic-options">
                 <div>
                   <FileArchive size={21} strokeWidth={2.2} aria-hidden="true" />
                   <p>{analysis.note}</p>
                 </div>
 
-                {#if detectedSizes.length > 1}
+                <div>
+                  <p class="section-label">Responsive</p>
                   <div class="segmented-control">
-                    <button class:active={zipMode === 'all'} type="button" on:click={() => (zipMode = 'all')}>Upload all sizes</button>
-                    <button class:active={zipMode === 'single'} type="button" on:click={() => (zipMode = 'single')}>One size</button>
+                    <button class:active={!programmaticResponsive} type="button" on:click={() => (programmaticResponsive = false)}>Fixed</button>
+                    <button class:active={programmaticResponsive} type="button" on:click={() => (programmaticResponsive = true)}>Responsive</button>
                   </div>
-                {/if}
+                </div>
 
-                {#if zipMode === 'single' || detectedSizes.length <= 1}
-                  {#if detectedSizes.length}
-                    <label class="field-label">
-                      Size to submit
-                      <select bind:value={selectedZipSize} class="select">
-                        {#each detectedSizes as item}
-                          <option>{item}</option>
-                        {/each}
-                      </select>
-                    </label>
-                  {:else}
-                    <div class="field-grid two">
+                <div class="display-size-list">
+                  <div>
+                    <p class="section-label">Showcase sizes</p>
+                    <p class="muted">Choose up to five display sizes to publish as separate archive records.</p>
+                  </div>
+
+                  {#each showcaseSizeRows as row, index (row.id)}
+                    <div class="display-size-row">
                       <label class="field-label">
-                        Size
-                        <select bind:value={manualSize} class="select">
+                        Display size {index + 1}
+                        <select bind:value={row.size} class="select">
                           {#each sizes as item}
                             <option>{item}</option>
                           {/each}
                           <option value="custom">Custom</option>
                         </select>
                       </label>
-                      {#if manualSize === 'custom'}
+
+                      {#if row.size === 'custom'}
                         <label class="field-label">
                           Width
-                          <input bind:value={customWidth} class="field" type="number" min="1" max="4000" placeholder="300" />
+                          <input bind:value={row.customWidth} class="field" type="number" min="1" max="4000" placeholder="300" />
                         </label>
                         <label class="field-label">
                           Height
-                          <input bind:value={customHeight} class="field" type="number" min="1" max="4000" placeholder="250" />
+                          <input bind:value={row.customHeight} class="field" type="number" min="1" max="4000" placeholder="250" />
                         </label>
                       {/if}
+
+                      {#if !isEditing && showcaseSizeRows.length > 1}
+                        <button class="icon-button button-danger" type="button" aria-label={`Remove display size ${index + 1}`} on:click={() => removeShowcaseSize(index)}>
+                          <Trash2 size={17} strokeWidth={2.25} aria-hidden="true" />
+                        </button>
+                      {/if}
                     </div>
+                  {/each}
+
+                  {#if canAddShowcaseSize}
+                    <button class="button button-secondary add-display-size" type="button" on:click={addShowcaseSize}>
+                      <Plus size={17} strokeWidth={2.3} aria-hidden="true" />
+                      Add display size
+                    </button>
                   {/if}
-                {/if}
+                </div>
               </div>
             {/if}
           </div>

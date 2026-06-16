@@ -1135,6 +1135,39 @@ video {
   margin: 0;
 }
 
+.display-size-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.display-size-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-muted);
+  padding: 0.75rem;
+}
+
+.display-size-row .field-label {
+  flex: 1 1 8.5rem;
+  min-width: 0;
+}
+
+.display-size-row .field-label:first-child {
+  flex-basis: 12rem;
+}
+
+.display-size-row .icon-button {
+  flex: 0 0 auto;
+}
+
+.add-display-size {
+  width: fit-content;
+}
+
 .segmented-control {
   display: inline-flex;
   width: fit-content;
@@ -1871,6 +1904,24 @@ video {
   .segmented-control button {
     padding-inline: 0.45rem;
     font-size: 0.82rem;
+  }
+
+  .display-size-row {
+    gap: 0.55rem;
+    padding: 0.65rem;
+  }
+
+  .display-size-row .field-label:first-child,
+  .display-size-row .field-label {
+    flex-basis: 100%;
+  }
+
+  .display-size-row .icon-button {
+    margin-left: auto;
+  }
+
+  .add-display-size {
+    width: 100%;
   }
 
   .submit-sidebar {
