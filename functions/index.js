@@ -550,6 +550,10 @@ function html5PreviewBootstrap() {
     return Object.assign({}, runtimeState, {
       scrollTop: Math.round(runtimeState.scrollY || 0),
       scrollLeft: Math.round(runtimeState.scrollX || 0),
+      windowWidth: Math.round(runtimeState.windowWidth || runtimeState.viewportWidth || window.innerWidth || 0),
+      windowHeight: Math.round(runtimeState.windowHeight || runtimeState.viewportHeight || window.innerHeight || 0),
+      creativeFramePercentY: Math.max(0, Math.min(1, Number(runtimeState.creativeFramePercentY) || 0)),
+      creativeFramePercentX: Math.max(0, Math.min(1, Number(runtimeState.creativeFramePercentX) || 0)),
       pageOffset: {
         x: Math.round(runtimeState.scrollX || 0),
         y: Math.round(runtimeState.scrollY || 0)
@@ -623,6 +627,8 @@ function html5PreviewBootstrap() {
 
     emit(window.studio.events.StudioEvent.HOSTPAGE_SCROLL, detail);
     emit('hostpagescroll', detail);
+    dispatchBrowserEvent(document, 'hostpagescroll', detail);
+    dispatchBrowserEvent(window, 'hostpagescroll', detail);
     dispatchBrowserEvent(window, 'adArchiveHostScroll', detail);
 
     try {

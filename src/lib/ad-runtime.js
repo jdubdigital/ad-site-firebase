@@ -23,6 +23,7 @@ function createRuntimePayload(slot, visibleTimeMs, options = {}) {
   const visiblePercent = getVisiblePercent(rect, viewportWidth, viewportHeight);
   const scrollY = window.scrollY || window.pageYOffset || 0;
   const scrollX = window.scrollX || window.pageXOffset || 0;
+  const creativeFramePercentY = clamp((viewportHeight - rect.top) / Math.max(1, viewportHeight + rect.height), 0, 1);
 
   return {
     type: runtimeUpdateType,
@@ -34,6 +35,8 @@ function createRuntimePayload(slot, visibleTimeMs, options = {}) {
     viewportHeight,
     pageWidth: Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth || 0),
     pageHeight: Math.max(document.documentElement.scrollHeight, document.body?.scrollHeight || 0),
+    windowWidth: viewportWidth,
+    windowHeight: viewportHeight,
     adTop: rect.top,
     adBottom: rect.bottom,
     adLeft: rect.left,
@@ -45,6 +48,8 @@ function createRuntimePayload(slot, visibleTimeMs, options = {}) {
     creativeScale: options.creativeScale || 1,
     adPageTop: rect.top + scrollY,
     adPageLeft: rect.left + scrollX,
+    creativeFramePercentY,
+    creativeFramePercentX: clamp((viewportWidth - rect.left) / Math.max(1, viewportWidth + rect.width), 0, 1),
     visiblePercent,
     isVisible: visiblePercent > 0,
     visibleTimeMs,
