@@ -65,6 +65,10 @@ export function loadAds() {
   }));
 }
 
+export function loadAdById(adId) {
+  return loadAds().find((ad) => String(ad.id) === String(adId)) || null;
+}
+
 export function createSubmittedAd(adValues, options = {}) {
   options.onProgress?.({ stage: 'save', progress: 0.35 });
 

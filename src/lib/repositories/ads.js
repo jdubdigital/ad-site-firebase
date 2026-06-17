@@ -13,6 +13,17 @@ export async function loadAds() {
   return localAds.loadAds();
 }
 
+export async function loadAdById(adId) {
+  if (isFirebaseConfigured) {
+    const user = await getCurrentFirebaseUser();
+    const likedIds = user ? (await firebaseAds.getLikedAdIds()) || [] : [];
+    const ad = await firebaseAds.loadAdById(adId, likedIds);
+    if (ad) return ad;
+  }
+
+  return localAds.loadAdById(adId);
+}
+
 export async function getLikedAdIds() {
   if (isFirebaseConfigured) {
     const user = await getCurrentFirebaseUser();

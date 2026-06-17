@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { onDestroy, tick } from 'svelte';
+  import { loadAdById } from '$lib/repositories/ads';
   import { ads, adsReady } from '$lib/stores/archive';
   import { createAdRuntime } from '$lib/ad-runtime';
   import { getAdTypeLabel, getAdUserName, getMediumLabel } from '$lib/utils/ad-utils';
@@ -13,9 +14,14 @@
   let runtimeKey = '';
   let slotAvailableWidth = 0;
   let resizeObserver;
+  let routeAd = null;
+  let routeAdReady = false;
+  let fetchedAdId = '';
+  let routeFetchRun = 0;
 
   $: adId = decodeURIComponent($page.params.id || '');
-  $: ad = $ads.find((item) => String(item.id) === adId);
+  $: storeAd = $ads.find((item) => String(item.id) === adId);
+  $: ad = storeAd || (String(routeAd?.id || '') === adId ? routeAd : null);
   $: isHtmlProgrammatic = ad?.type === 'html5';
   $: hasHtmlProgrammaticPreview = isHtmlProgrammatic && Boolean(ad?.htmlPreviewUrl);
   $: [creativeWidth, creativeHeight] = String(ad?.size || '300x250')
@@ -29,8 +35,29 @@
   $: frameStyle = `width: ${frameWidth}px; height: ${frameHeight}px; transform: scale(${frameScale});`;
   $: frameShellStyle = `width: ${scaledFrameWidth}px; height: ${scaledFrameHeight}px;`;
   $: slotStyle = `--creative-width: ${frameWidth}px;`;
+  $: loadRouteAd(adId, storeAd);
   $: watchSlot(adSlot);
   $: attachRuntime(ad?.id, hasHtmlProgrammaticPreview ? ad?.htmlPreviewUrl : '', liveFrame, adSlot, frameScale);
+
+  async function loadRouteAd(id, knownAd) {
+    if (!browser || !id || knownAd || fetchedAdId === id) return;
+
+    const run = ++routeFetchRun;
+    fetchedAdId = id;
+    routeAdReady = false;
+    routeAd = null;
+
+    try {
+      const loadedAd = await loadAdById(id);
+      if (run !== routeFetchRun) return;
+      routeAd = loadedAd;
+    } catch (error) {
+      if (run !== routeFetchRun) return;
+      routeAd = null;
+    } finally {
+      if (run === routeFetchRun) routeAdReady = true;
+    }
+  }
 
   function watchSlot(slot) {
     if (!browser || !slot || resizeObserver) return;
@@ -146,7 +173,7 @@
           Back to ad detail
         </button>
       </div>
-    {:else if !$adsReady}
+    {:else if !$adsReady && !routeAdReady}
       <div class="empty-state">
         <h1>Loading live preview</h1>
         <p class="muted">Checking the archive for this creative.</p>

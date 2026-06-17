@@ -118,6 +118,16 @@ export async function loadAds(likedIdsOverride = null) {
   return snapshot.docs.map((adDoc) => normalizeRemoteAd(adDoc.id, adDoc.data(), likedIds));
 }
 
+export async function loadAdById(adId, likedIdsOverride = null) {
+  const services = await getFirebaseServices();
+  if (!services || !adId) return null;
+  const { doc, getDoc } = services.firestoreApi;
+
+  const likedIds = likedIdsOverride || (await getLikedAdIds()) || [];
+  const snapshot = await getDoc(doc(services.db, 'ads', String(adId)));
+  return snapshot.exists() ? normalizeRemoteAd(snapshot.id, snapshot.data(), likedIds) : null;
+}
+
 export async function createSubmittedAd(adValues, file, options = {}) {
   const services = await getFirebaseServices();
   const user = await getCurrentFirebaseUser();
