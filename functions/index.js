@@ -23,7 +23,10 @@ const html5MaxFileBytes = 5 * 1024 * 1024;
 const html5MaxTotalBytes = 15 * 1024 * 1024;
 const html5AllowedExtensions = new Set([
   'css',
+  'bin',
   'gif',
+  'glb',
+  'gltf',
   'htm',
   'html',
   'jpeg',
@@ -43,8 +46,11 @@ const html5AllowedExtensions = new Set([
   'woff2'
 ]);
 const html5MimeTypes = {
+  bin: 'application/octet-stream',
   css: 'text/css; charset=utf-8',
   gif: 'image/gif',
+  glb: 'model/gltf-binary',
+  gltf: 'model/gltf+json; charset=utf-8',
   htm: 'text/html; charset=utf-8',
   html: 'text/html; charset=utf-8',
   jpeg: 'image/jpeg',
