@@ -1058,12 +1058,30 @@ function html5PreviewBootstrap() {
 </script>`;
 }
 
-function prepareHtmlPreview(buffer, contentType) {
+function addModelAssetCacheBust(html, versionKey) {
+  if (!versionKey) return html;
+  const version = encodeURIComponent(String(versionKey).slice(0, 80));
+
+  function versionedUrl(url) {
+    if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(url)) return url;
+
+    const [withoutHash, hash = ''] = String(url).split('#');
+    const [path, query = ''] = withoutHash.split('?');
+    const nextQuery = query ? `${query}&v=${version}` : `v=${version}`;
+    return `${path}?${nextQuery}${hash ? `#${hash}` : ''}`;
+  }
+
+  return html.replace(/\b(src|href)=(["'])([^"']+\.(?:glb|gltf|bin)(?:\?[^"']*)?(?:#[^"']*)?)\2/gi, (match, attribute, quote, url) => {
+    return `${attribute}=${quote}${versionedUrl(url)}${quote}`;
+  });
+}
+
+function prepareHtmlPreview(buffer, contentType, versionKey = '') {
   if (!contentType.startsWith('text/html')) return buffer;
 
-  const html = buffer.toString('utf8');
+  const html = addModelAssetCacheBust(buffer.toString('utf8'), versionKey);
   const bootstrap = html5PreviewBootstrap();
-  if (html.includes('data-ad-archive-html5-preview-shim')) return buffer;
+  if (html.includes('data-ad-archive-html5-preview-shim')) return Buffer.from(html);
 
   const script = bootstrap.replace('<script>', '<script data-ad-archive-html5-preview-shim>');
   if (/<head[^>]*>/i.test(html)) return Buffer.from(html.replace(/<head[^>]*>/i, (match) => `${match}${script}`));
@@ -1097,7 +1115,10 @@ async function handleHtml5Preview(path, res) {
   const [buffer] = await file.download();
   const contentType = metadata.contentType || html5MimeTypes[extensionForPath(requestedPath)] || 'application/octet-stream';
 
-  res.status(200).set(previewContentHeaders(contentType)).send(prepareHtmlPreview(buffer, contentType));
+  res
+    .status(200)
+    .set(previewContentHeaders(contentType))
+    .send(prepareHtmlPreview(buffer, contentType, ad.htmlPreviewProcessedAt || ad.updatedAt || ad.htmlPreviewFileCount || ''));
 }
 
 exports.api = onRequest(async (req, res) => {
