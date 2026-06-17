@@ -715,7 +715,8 @@ function html5PreviewBootstrap() {
     FULLSCREEN_SUPPORT: event('fullscreensupport'),
     HOSTPAGE_SCROLL: event('hostpagescroll'),
     HOST_PAGE_SCROLL: event('hostpagescroll'),
-    PAGE_SCROLL: event('hostpagescroll')
+    PAGE_SCROLL: event('hostpagescroll'),
+    EXIT: event('exit')
   };
   window.studio.module = window.studio.module || { ModuleId: { GDN: 'gdn' } };
   window.studio.sdk = window.studio.sdk || {};
@@ -1076,10 +1077,17 @@ function addModelAssetCacheBust(html, versionKey) {
   });
 }
 
+function stripExternalPreviewRuntimeScripts(html) {
+  return html.replace(
+    /<script\b(?=[^>]*\bsrc=(["'])(?:https?:)?\/\/s0\.2mdn\.net\/ads\/studio\/Enabler\.js(?:[?#][^"']*)?\1)[^>]*>\s*<\/script>/gi,
+    ''
+  );
+}
+
 function prepareHtmlPreview(buffer, contentType, versionKey = '') {
   if (!contentType.startsWith('text/html')) return buffer;
 
-  const html = addModelAssetCacheBust(buffer.toString('utf8'), versionKey);
+  const html = addModelAssetCacheBust(stripExternalPreviewRuntimeScripts(buffer.toString('utf8')), versionKey);
   const bootstrap = html5PreviewBootstrap();
   if (html.includes('data-ad-archive-html5-preview-shim')) return Buffer.from(html);
 
