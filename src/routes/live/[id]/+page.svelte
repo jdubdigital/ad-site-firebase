@@ -3,7 +3,6 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { onDestroy, tick } from 'svelte';
-  import LivePreviewDebugPanel from '$lib/components/LivePreviewDebugPanel.svelte';
   import { ads, adsReady } from '$lib/stores/archive';
   import { createAdRuntime } from '$lib/ad-runtime';
   import { getAdTypeLabel, getAdUserName, getMediumLabel } from '$lib/utils/ad-utils';
@@ -12,11 +11,6 @@
   let adSlot;
   let runtime;
   let runtimeKey = '';
-  let runtimeState = null;
-  let runtimeLogs = [];
-  let impressionFired = false;
-  let bridgeReady = false;
-  let bridgeInfo = null;
   let slotAvailableWidth = 0;
   let resizeObserver;
 
@@ -38,16 +32,6 @@
   $: watchSlot(adSlot);
   $: attachRuntime(ad?.id, hasHtmlProgrammaticPreview ? ad?.htmlPreviewUrl : '', liveFrame, adSlot, frameScale);
 
-  function addLog(log) {
-    runtimeLogs = [
-      {
-        timestamp: Date.now(),
-        ...log
-      },
-      ...runtimeLogs
-    ].slice(0, 60);
-  }
-
   function watchSlot(slot) {
     if (!browser || !slot || resizeObserver) return;
     resizeObserver = new ResizeObserver(([entry]) => {
@@ -65,11 +49,6 @@
     runtime?.destroy();
     runtime = null;
     runtimeKey = nextKey;
-    runtimeState = null;
-    runtimeLogs = [];
-    impressionFired = false;
-    bridgeReady = false;
-    bridgeInfo = null;
 
     if (!nextKey) return;
 
@@ -80,14 +59,7 @@
         slot: adSlot,
         creativeWidth: frameWidth,
         creativeHeight: frameHeight,
-        creativeScale: scale,
-        onUpdate: (update) => (runtimeState = update),
-        onLog: addLog,
-        onImpression: () => (impressionFired = true),
-        onBridgeReady: (event) => {
-          bridgeReady = true;
-          bridgeInfo = event;
-        }
+        creativeScale: scale
       });
     });
   }
@@ -113,7 +85,7 @@
         <p class="eyebrow">Live Preview</p>
         <h1>{ad ? ad.title : 'Programmatic preview'}</h1>
         {#if ad}
-          <p class="muted">{getAdTypeLabel(ad.type)} · {getMediumLabel(ad.medium)} · {ad.size} · Posted by {getAdUserName(ad)}</p>
+          <p class="muted">{getAdTypeLabel(ad.type)} · {getMediumLabel(ad.medium)} · Posted by {getAdUserName(ad)}</p>
         {/if}
       </div>
       <button class="button button-secondary" type="button" on:click={() => goto(ad ? `/ad/${encodeURIComponent(String(ad.id))}` : '/')}>
@@ -122,76 +94,42 @@
     </div>
 
     {#if ad && hasHtmlProgrammaticPreview}
-      <div class="live-preview-workbench">
-        <aside class="publisher-sidebar">
-          <h2>Preview Notes</h2>
-          <p class="live-preview-note">
-            Scroll the page to move the creative through the viewport. This simulates a programmatic slot on a real web page and sends
-            position and viewability signals to the ad.
-          </p>
-          <dl class="detail-list">
-            <div>
-              <dt>Format</dt>
-              <dd>{getAdTypeLabel(ad.type)}</dd>
-            </div>
-            <div>
-              <dt>Medium</dt>
-              <dd>{getMediumLabel(ad.medium)}</dd>
-            </div>
-            <div>
-              <dt>Size</dt>
-              <dd>{ad.size}</dd>
-            </div>
-            <div>
-              <dt>Preview</dt>
-              <dd>{bridgeReady ? 'Runtime bridge ready' : 'Waiting for bridge'}</dd>
-            </div>
-            <div>
-              <dt>Scale</dt>
-              <dd>{Math.round(frameScale * 100)}%</dd>
-            </div>
-          </dl>
-        </aside>
+      <main class="live-ad-stage" aria-label={`${ad.title} live preview`}>
+        <div class="live-placement-intro">
+          <p class="eyebrow">Simulated Page Placement</p>
+          <p>Scroll down to bring the ad into view, then keep scrolling to test scroll-reactive creative behavior.</p>
+        </div>
 
-        <main class="live-ad-stage" aria-label={`${ad.title} live preview`}>
-          <div class="live-placement-intro">
-            <p class="eyebrow">Simulated Page Placement</p>
-            <p>Scroll down to bring the ad into view, then keep scrolling to test scroll-reactive creative behavior.</p>
-          </div>
+        <div class="live-placement-content" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
 
-          <div class="live-placement-content" aria-hidden="true">
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-
-          <div class="live-placement-ad">
-            <span class="live-placement-label">Ad placement</span>
-            <div bind:this={adSlot} class="live-ad-slot" style={slotStyle}>
-              <div class="live-ad-frame-shell" style={frameShellStyle}>
-                <iframe
-                  bind:this={liveFrame}
-                  src={ad.htmlPreviewUrl}
-                  title={`${ad.title} live programmatic preview`}
-                  sandbox="allow-scripts"
-                  referrerpolicy="no-referrer"
-                  style={frameStyle}
-                  on:load={handleFrameLoad}
-                ></iframe>
-              </div>
+        <div class="live-placement-ad">
+          <span class="live-placement-label">Ad placement</span>
+          <div bind:this={adSlot} class="live-ad-slot" style={slotStyle}>
+            <div class="live-ad-frame-shell" style={frameShellStyle}>
+              <iframe
+                bind:this={liveFrame}
+                src={ad.htmlPreviewUrl}
+                title={`${ad.title} live programmatic preview`}
+                sandbox="allow-scripts"
+                referrerpolicy="no-referrer"
+                style={frameStyle}
+                on:load={handleFrameLoad}
+              ></iframe>
             </div>
           </div>
+        </div>
 
-          <div class="live-placement-content live-placement-content-after" aria-hidden="true">
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-        </main>
-
-        <LivePreviewDebugPanel {runtimeState} logs={runtimeLogs} {impressionFired} {bridgeReady} {bridgeInfo} />
-      </div>
+        <div class="live-placement-content live-placement-content-after" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+      </main>
     {:else if ad && !isHtmlProgrammatic}
       <div class="empty-state">
         <h1>Live preview is only for HTML programmatic ads</h1>

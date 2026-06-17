@@ -169,7 +169,7 @@
       <div class="html5-box">
         <p class="eyebrow">{large ? 'Programmatic Package' : 'Programmatic'}</p>
         <h3>{ad.title}</h3>
-        <p class="muted">Packaged creative · {ad.size}</p>
+        <p class="muted">Packaged creative</p>
         {#if ad.htmlPreviewStatus === 'failed'}
           <p class="muted">{ad.htmlPreviewError || 'The ZIP preview could not be extracted.'}</p>
         {:else if large}

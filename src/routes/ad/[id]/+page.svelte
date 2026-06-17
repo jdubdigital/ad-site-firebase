@@ -17,7 +17,6 @@
         ['Category', ad.category],
         ['Medium', getMediumLabel(ad.medium)],
         ['Format', getAdTypeLabel(ad.type)],
-        ['Size', ad.size],
         ['Tags', ad.tags]
       ].filter(([, value]) => value)
     : [];
