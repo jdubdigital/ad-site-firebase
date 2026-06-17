@@ -363,7 +363,9 @@ function previewContentHeaders(contentType) {
   const headers = {
     'cache-control': contentType.startsWith('text/html') ? 'no-cache' : 'public, max-age=3600',
     'content-security-policy':
-      "default-src https: data: blob:; script-src https: 'unsafe-inline' data: blob:; style-src https: 'unsafe-inline'; img-src https: data: blob:; font-src https: data:; media-src https: data: blob:; connect-src 'none'; frame-ancestors 'self'",
+      "default-src https: data: blob:; script-src https: 'unsafe-inline' data: blob:; style-src https: 'unsafe-inline'; img-src https: data: blob:; font-src https: data:; media-src https: data: blob:; connect-src https: data: blob:; worker-src https: blob:; model-src https: data: blob:; frame-ancestors 'self'",
+    'access-control-allow-origin': '*',
+    'cross-origin-resource-policy': 'cross-origin',
     'x-content-type-options': 'nosniff'
   };
 
