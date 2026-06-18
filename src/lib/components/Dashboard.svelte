@@ -5,7 +5,7 @@
   import Edit3 from '@lucide/svelte/icons/edit-3';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import { getPublicProfileBySlug } from '$lib/repositories/profile';
-  import { signedInEmail, signOut, wipeCurrentAccount } from '$lib/stores/account';
+  import { signedInEmail, wipeCurrentAccount } from '$lib/stores/account';
   import { ads, deleteAd, hydrateAds } from '$lib/stores/archive';
   import { favoriteUsers } from '$lib/stores/favorites';
   import { profile, saveProfile } from '$lib/stores/profile';
@@ -239,11 +239,6 @@
 
   function openAdPage(ad) {
     goto(`/ad/${encodeURIComponent(String(ad.id))}`);
-  }
-
-  async function handleSignOut() {
-    await signOut();
-    goto('/');
   }
 
   async function handleDeleteAccount() {
@@ -516,7 +511,6 @@
           <p class="status">{accountDeleteStatus}</p>
         {/if}
       </div>
-      <button class="button button-secondary" type="button" on:click={handleSignOut}>Sign out</button>
     </div>
   </div>
 </section>

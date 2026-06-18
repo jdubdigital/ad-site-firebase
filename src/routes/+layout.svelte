@@ -26,7 +26,8 @@
     return unsubscribe;
   });
 
-  $: appLoading = Boolean($navigating) || !$adsReady;
+  $: isAbout = $page.url.pathname === '/about';
+  $: appLoading = Boolean($navigating) || (!isAbout && !$adsReady);
   $: loadingLabel = !$adsReady ? 'Loading ads' : 'Loading page';
   $: isEmbed = $page.url.pathname.startsWith('/embed/');
 </script>
