@@ -352,7 +352,7 @@
                 autocomplete="username"
                 value={username}
               />
-              <span class="field-help">Cannot be changed later.</span>
+              <span class="field-help">Cannot be changed.</span>
             </label>
 
             <label class="field-label">

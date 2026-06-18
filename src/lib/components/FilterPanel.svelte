@@ -1,7 +1,8 @@
 <script>
   import { browser } from '$app/environment';
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount } from 'svelte';
   import Search from '@lucide/svelte/icons/search';
+  import X from '@lucide/svelte/icons/x';
   import { extraCategories, mediums, primaryCategories } from '$lib/data/catalog';
   import FormatChips from './FormatChips.svelte';
   import { activeFilters, clearFilters, setFilter, setSearchQuery } from '$lib/stores/archive';
@@ -12,6 +13,13 @@
   let searchInput;
 
   $: visibleCategories = showAllCategories ? [...primaryCategories, ...extraCategories] : primaryCategories;
+  $: syncMobileScrollLock($filtersOpen);
+
+  function syncMobileScrollLock(open) {
+    if (!browser) return;
+    const shouldLock = open && window.matchMedia('(max-width: 767px)').matches;
+    document.body.classList.toggle('mobile-search-open', shouldLock);
+  }
 
   function onKeydown(event) {
     if (event.key === 'Escape') closeFilters();
@@ -29,13 +37,17 @@
     return () => document.removeEventListener('keydown', onKeydown);
   });
 
+  onDestroy(() => {
+    if (browser) document.body.classList.remove('mobile-search-open');
+  });
+
   $: if (browser && $filtersOpen && searchInput) {
     setTimeout(() => searchInput?.focus(), 50);
   }
 </script>
 
 {#if $filtersOpen}
-  <button class="overlay" type="button" aria-label="Close search filters" on:click={closeFilters}></button>
+  <button class="overlay filter-overlay" type="button" aria-label="Close search filters" on:click={closeFilters}></button>
   <div class="filter-panel">
     <div class="filter-box">
       <div class="panel-header">
@@ -44,7 +56,9 @@
           <h2 class="panel-title">Find creative inspiration fast</h2>
           <p class="muted">Search by title, category, tag, format, ad size, user, or location.</p>
         </div>
-        <button class="icon-button" type="button" aria-label="Close search menu" on:click={closeFilters}>×</button>
+        <button class="icon-button" type="button" aria-label="Close search page" on:click={closeFilters}>
+          <X size={21} strokeWidth={2.15} aria-hidden="true" />
+        </button>
       </div>
 
       <div class="filter-search">

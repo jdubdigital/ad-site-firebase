@@ -35,11 +35,6 @@
     setMobileMenu(false);
   }
 
-  function handleSearchClick() {
-    closeMobileMenu();
-    openFilters();
-  }
-
   function handleSubmitClick() {
     closeMobileMenu();
     if ($signedInEmail) {
@@ -201,15 +196,6 @@
 
       <div class="mobile-menu-panel" role="dialog" aria-modal="true" aria-label="Navigation menu" transition:fly={{ y: -14, duration: 220 }}>
         <div class="container mobile-menu-inner">
-          <button class="mobile-menu-search" type="button" on:click={handleSearchClick}>
-            <Search size={20} strokeWidth={2.15} aria-hidden="true" />
-            <span>
-              <strong>Search the archive</strong>
-              <small>Ads, brands, categories, formats</small>
-            </span>
-            <ArrowRight size={19} strokeWidth={2} aria-hidden="true" />
-          </button>
-
           <nav class="mobile-menu-links" aria-label="Mobile navigation">
             <a class:active={$page.url.pathname === '/'} href="/">
               <span class="mobile-menu-link-icon"><House size={20} strokeWidth={2} aria-hidden="true" /></span>

@@ -1,4 +1,7 @@
 <script>
+  import { browser } from '$app/environment';
+  import { onDestroy } from 'svelte';
+  import X from '@lucide/svelte/icons/x';
   import { defaultDashboardProfile } from '$lib/data/catalog';
   import { createAccount, deleteCurrentAccount, signIn } from '$lib/stores/account';
   import { checkUserSlugAvailable, saveProfile } from '$lib/stores/profile';
@@ -19,6 +22,13 @@
 
   $: isCreate = $loginMode === 'create';
   $: usernameSlug = createUsernameSlug(username, '');
+  $: syncMobileScrollLock($loginOpen);
+
+  function syncMobileScrollLock(open) {
+    if (!browser) return;
+    const shouldLock = open && window.matchMedia('(max-width: 767px)').matches;
+    document.body.classList.toggle('mobile-auth-open', shouldLock);
+  }
 
   async function checkUsernameNow() {
     const slug = createUsernameSlug(username, '');
@@ -116,11 +126,15 @@
       submitting = false;
     }
   }
+
+  onDestroy(() => {
+    if (browser) document.body.classList.remove('mobile-auth-open');
+  });
 </script>
 
 {#if $loginOpen}
   <div class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="login-title">
-    <button class="overlay" type="button" aria-label="Close login" disabled={submitting} on:click={closeLogin}></button>
+    <button class="overlay modal-backdrop" type="button" aria-label="Close login" disabled={submitting} on:click={closeLogin}></button>
     <div class="modal-box small">
       <div class="modal-header">
         <div>
@@ -128,7 +142,9 @@
           <h2 id="login-title" class="modal-title">{isCreate ? 'Create account' : 'Sign in'}</h2>
           <p class="muted">{isCreate ? 'Claim your username and start building your archive.' : 'Save favorites and build creative collections.'}</p>
         </div>
-        <button class="icon-button" type="button" aria-label="Close login" disabled={submitting} on:click={closeLogin}>×</button>
+        <button class="icon-button" type="button" aria-label="Close account page" disabled={submitting} on:click={closeLogin}>
+          <X size={21} strokeWidth={2.15} aria-hidden="true" />
+        </button>
       </div>
 
       <form class="modal-content" on:submit|preventDefault={submitLogin}>
