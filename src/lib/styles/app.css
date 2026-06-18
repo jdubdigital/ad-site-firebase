@@ -1541,20 +1541,28 @@ video {
   background: color-mix(in srgb, var(--muted) 18%, transparent);
 }
 
-.live-placement-content span:nth-child(1) {
+.live-placement-content span:nth-child(6n + 1) {
   width: 72%;
 }
 
-.live-placement-content span:nth-child(2) {
+.live-placement-content span:nth-child(6n + 2) {
   width: 92%;
 }
 
-.live-placement-content span:nth-child(3) {
+.live-placement-content span:nth-child(6n + 3) {
   width: 58%;
 }
 
-.live-placement-content span:nth-child(4) {
+.live-placement-content span:nth-child(6n + 4) {
   width: 84%;
+}
+
+.live-placement-content span:nth-child(6n + 5) {
+  width: 96%;
+}
+
+.live-placement-content span:nth-child(6n) {
+  width: 66%;
 }
 
 .live-placement-content-after {
