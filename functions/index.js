@@ -117,16 +117,9 @@ async function publicProfilePayload(profileSnapshot) {
   const data = profileSnapshot.data() || {};
   const userSlug = cleanPublicProfileText(data.userSlug || data.username, '', 48);
   const username = cleanPublicProfileText(data.username || userSlug, userSlug, 48);
-  const storedName = cleanPublicProfileText(data.name, '', 64);
-  let name = storedName;
-
-  if ((!name || name === username || name === userSlug) && data.displayNameKey) {
-    const legacyNameSnapshot = await db.collection('displayNames').doc(String(data.displayNameKey)).get();
-    name = cleanPublicProfileText(legacyNameSnapshot.data()?.name, name, 64);
-  }
 
   return {
-    name: name || username || userSlug || 'Ad Archive user',
+    name: username || userSlug || 'ad-archive-user',
     type: cleanPublicProfileText(data.type, 'Individual', 32),
     description: cleanPublicProfileText(
       data.description,

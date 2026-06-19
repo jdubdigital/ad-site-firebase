@@ -1,6 +1,6 @@
 import { getCurrentFirebaseUser, getFirebaseServices } from '$lib/firebase/client';
 import { defaultDashboardProfile, users } from '$lib/data/catalog';
-import { cleanDisplayName, createSlug, createUsernameSlug } from '$lib/utils/slug';
+import { createSlug, createUsernameSlug } from '$lib/utils/slug';
 
 const demoProfileSlug = 'mohegan-sun';
 
@@ -8,7 +8,7 @@ function isStaticUserSlug(slug) {
   return users.some((user) => user.slug === slug);
 }
 
-function cleanProfileDoc(data, uid, email, recoveredName = '') {
+function cleanProfileDoc(data, uid, email) {
   const { email: _privateEmail, ...publicData } = data || {};
   const emailSlug = createSlug(email?.split('@')[0], uid);
   const userSlug = createUsernameSlug(
@@ -16,17 +16,11 @@ function cleanProfileDoc(data, uid, email, recoveredName = '') {
     emailSlug
   );
   const username = createUsernameSlug(publicData.username || userSlug, userSlug);
-  const storedName = cleanDisplayName(publicData.name, '');
-  const nameWasForcedToUsername = !storedName || storedName === username || storedName === userSlug;
-  const publicName = cleanDisplayName(
-    nameWasForcedToUsername ? recoveredName || storedName : storedName,
-    username || userSlug || defaultDashboardProfile.name
-  );
 
   return {
     ...defaultDashboardProfile,
     ...publicData,
-    name: publicName,
+    name: username,
     username,
     userSlug
   };
@@ -36,28 +30,14 @@ function cleanProfileForSave(profile, user) {
   const { email: _privateEmail, ...publicProfile } = profile || {};
   const fallbackSlug = createUsernameSlug(user.email?.split('@')[0], user.uid);
   const userSlug = createUsernameSlug(publicProfile.userSlug || publicProfile.username || fallbackSlug, fallbackSlug);
-  const name = cleanDisplayName(publicProfile.name, userSlug);
 
   return {
     ...defaultDashboardProfile,
     ...publicProfile,
-    name,
+    name: userSlug,
     username: userSlug,
     userSlug
   };
-}
-
-async function recoverLegacyDisplayName(services, data) {
-  const storedName = cleanDisplayName(data?.name, '');
-  const userSlug = createUsernameSlug(data?.userSlug || data?.username, '');
-  const username = createUsernameSlug(data?.username || userSlug, userSlug);
-  const needsRecovery = !storedName || storedName === username || storedName === userSlug;
-
-  if (!needsRecovery || !data?.displayNameKey) return '';
-
-  const { doc, getDoc } = services.firestoreApi;
-  const displayNameSnapshot = await getDoc(doc(services.db, 'displayNames', data.displayNameKey));
-  return cleanDisplayName(displayNameSnapshot.data()?.name, '');
 }
 
 async function syncProfileToAds(services, profile, uid) {
@@ -90,13 +70,19 @@ export async function getDashboardProfile() {
   }
 
   const data = snapshot.data();
-  const recoveredName = await recoverLegacyDisplayName(services, data);
+  const cleanedProfile = cleanProfileDoc(data, user.uid, user.email);
+  const profileUpdates = {};
 
   if (Object.prototype.hasOwnProperty.call(data, 'email')) {
-    await updateDoc(profileRef, { email: deleteField() }).catch(() => {});
+    profileUpdates.email = deleteField();
+  }
+  if (data.name !== cleanedProfile.username) profileUpdates.name = cleanedProfile.username;
+
+  if (Object.keys(profileUpdates).length) {
+    await updateDoc(profileRef, profileUpdates).catch(() => {});
   }
 
-  return cleanProfileDoc(data, user.uid, user.email, recoveredName);
+  return cleanedProfile;
 }
 
 export async function checkUserSlugAvailable(slug, ownerUid = '') {

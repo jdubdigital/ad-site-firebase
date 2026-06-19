@@ -49,10 +49,9 @@ service cloud.firestore {
       return !request.resource.data.keys().hasAny(['email']);
     }
 
-    function onlyRemovesLegacyEmail() {
-      return resource.data.keys().hasAny(['email'])
-        && !request.resource.data.keys().hasAny(['email'])
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['email']);
+    function profileUsesUsernameAsName() {
+      return request.resource.data.name == request.resource.data.username
+        && request.resource.data.username == request.resource.data.userSlug;
     }
 
     match /ads/{adId} {
@@ -72,17 +71,14 @@ service cloud.firestore {
       allow create: if owns(uid)
         && request.resource.data.ownerUid == request.auth.uid
         && profileHasNoEmail()
+        && profileUsesUsernameAsName()
         && profileHasOwnedUsername(uid);
       allow update: if owns(uid)
-        && (
-          onlyRemovesLegacyEmail() ||
-          (
-            request.resource.data.ownerUid == request.auth.uid
-            && profileHasNoEmail()
-            && profileUsernameUnchanged()
-            && profileHasOwnedUsername(uid)
-          )
-        );
+        && request.resource.data.ownerUid == request.auth.uid
+        && profileHasNoEmail()
+        && profileUsesUsernameAsName()
+        && profileUsernameUnchanged()
+        && profileHasOwnedUsername(uid);
       allow delete: if owns(uid);
     }
 

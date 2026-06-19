@@ -1,6 +1,6 @@
 import { defaultDashboardProfile } from '$lib/data/catalog';
 import { getUserBySlug } from '$lib/utils/ad-utils';
-import { cleanDisplayName, createUsernameSlug } from '$lib/utils/slug';
+import { createUsernameSlug } from '$lib/utils/slug';
 import { readJson, writeJson } from './storage';
 
 const DASHBOARD_PROFILE_KEY = 'dashboardProfile';
@@ -13,12 +13,13 @@ export function getDashboardProfile() {
     currentProfile.userSlug || legacyUserSlug || currentProfile.username,
     defaultDashboardProfile.userSlug
   );
+  const username = createUsernameSlug(currentProfile.username || userSlug, userSlug);
 
   return {
     ...defaultDashboardProfile,
     ...currentProfile,
-    name: cleanDisplayName(currentProfile.name, userSlug),
-    username: createUsernameSlug(currentProfile.username || userSlug, userSlug),
+    name: username,
+    username,
     userSlug
   };
 }
@@ -31,7 +32,7 @@ export function setDashboardProfile(profile) {
   );
   const saved = {
     ...publicProfile,
-    name: cleanDisplayName(publicProfile.name, userSlug),
+    name: userSlug,
     username: userSlug,
     userSlug
   };
