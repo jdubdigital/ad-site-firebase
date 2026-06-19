@@ -4,13 +4,14 @@
 
   export let ad;
   export let large = false;
+  export let active = false;
 
   const dispatch = createEventDispatcher();
 
   let frameShell;
   let videoElement;
   let frameScale = 1;
-  let mediaActive = large;
+  let mediaNearViewport = large;
   let mediaInViewport = large;
   let mediaReady = false;
   let mediaKey = '';
@@ -28,11 +29,14 @@
   $: shellStyle = large
     ? `width: ${shellWidth}px; height: ${shellHeight}px;`
     : `height: ${shellHeight}px;`;
+  $: requiresPreviewIntent =
+    !large && (ad.type === 'video' || ad.type === 'gif' || (ad.type === 'html5' && Boolean(ad.htmlPreviewUrl)));
+  $: mediaActive = large || (requiresPreviewIntent ? active : mediaNearViewport);
   $: mediaShellStyle = !large && !mediaActive ? `aspect-ratio: ${intrinsicWidth} / ${intrinsicHeight};` : '';
   $: nextMediaKey = `${ad.id}-${ad.type}-${src}-${ad.htmlPreviewUrl || ''}-${large}`;
   $: if (nextMediaKey !== mediaKey) {
     mediaKey = nextMediaKey;
-    mediaActive = large;
+    mediaNearViewport = large;
     mediaInViewport = large;
     mediaReady = ad.type === 'html5' && !ad.htmlPreviewUrl;
   }
@@ -84,13 +88,14 @@
 
   function observeMediaWindow(node) {
     if (large || typeof IntersectionObserver === 'undefined') {
-      mediaActive = true;
+      mediaNearViewport = true;
+      mediaInViewport = true;
       return {};
     }
 
     const nearObserver = new IntersectionObserver(
       ([entry]) => {
-        mediaActive = entry.isIntersecting;
+        mediaNearViewport = entry.isIntersecting;
       },
       {
         rootMargin: '900px 0px',
@@ -157,6 +162,11 @@
           style={frameStyle}
           on:load={markMediaReady}
         ></iframe>
+      {:else}
+        <div class="creative-idle-state" aria-hidden="true">
+          <span class="creative-idle-icon">▶</span>
+          <span>Preview HTML5</span>
+        </div>
       {/if}
       {#if mediaActive && !mediaReady}
         <div class="creative-loading-layer" aria-hidden="true">
@@ -203,6 +213,35 @@
       >
         <source src={src} type="video/mp4" />
       </video>
+    {:else}
+      <div class="creative-idle-state" aria-hidden="true">
+        <span class="creative-idle-icon">▶</span>
+        <span>Preview video</span>
+      </div>
+    {/if}
+    {#if mediaActive && !mediaReady}
+      <div class="creative-loading-layer" aria-hidden="true">
+        <span class="loading-spinner small"></span>
+      </div>
+    {/if}
+  </div>
+{:else if ad.type === 'gif'}
+  <div
+    class="creative-media-shell"
+    class:is-dormant={!mediaActive && !large}
+    class:is-large={large}
+    class:is-ready={mediaReady}
+    use:observeMediaWindow
+    style={mediaShellStyle}
+    aria-busy={!mediaReady}
+  >
+    {#if mediaActive}
+      <img src={src} alt={ad.title} loading={large ? 'eager' : 'lazy'} on:load={markMediaReady} on:error={markMediaReady} />
+    {:else}
+      <div class="creative-idle-state" aria-hidden="true">
+        <span class="creative-idle-icon">▶</span>
+        <span>Preview GIF</span>
+      </div>
     {/if}
     {#if mediaActive && !mediaReady}
       <div class="creative-loading-layer" aria-hidden="true">

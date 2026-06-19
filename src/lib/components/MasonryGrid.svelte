@@ -8,8 +8,17 @@
 
   let grid;
   let itemRefs = [];
+  let activePreviewId = '';
   let layoutFrame = 0;
   let resizeObserver;
+
+  function activatePreview(adId) {
+    activePreviewId = String(adId);
+  }
+
+  function deactivatePreview(adId) {
+    if (activePreviewId === String(adId)) activePreviewId = '';
+  }
 
   function layoutMasonry() {
     if (!grid) return;
@@ -77,7 +86,14 @@
 <div class="masonry" {id} bind:this={grid}>
   {#each ads as ad, index (ad.id)}
     <div class="masonry-item" bind:this={itemRefs[index]}>
-      <AdCard {ad} {externalLinks} on:mediaready={queueLayout} />
+      <AdCard
+        {ad}
+        {externalLinks}
+        previewActive={activePreviewId === String(ad.id)}
+        on:previewactivate={() => activatePreview(ad.id)}
+        on:previewdeactivate={() => deactivatePreview(ad.id)}
+        on:mediaready={queueLayout}
+      />
     </div>
   {/each}
 </div>
