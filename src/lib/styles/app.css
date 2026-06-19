@@ -2281,6 +2281,46 @@ video {
     scroll-margin-top: 4.75rem;
   }
 
+  .toolbar-inner {
+    flex-wrap: nowrap;
+    gap: 0.65rem;
+  }
+
+  .toolbar-inner > div:first-child {
+    min-width: 0;
+  }
+
+  .toolbar-inner > div:first-child p {
+    overflow: hidden;
+    font-size: 0.8rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .sort-control {
+    flex: 0 0 auto;
+    gap: 0;
+    margin-left: auto;
+  }
+
+  .sort-control-label,
+  .sort-leading-icon {
+    display: none;
+  }
+
+  .sort-control .select {
+    min-width: 8.75rem;
+    min-height: 2.35rem;
+    padding: 0.5rem 1.85rem 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .sort-chevron {
+    right: 0.6rem;
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+
   .header-inner {
     min-height: var(--mobile-header-height);
   }
@@ -3212,12 +3252,11 @@ video {
   }
 
   .sort-control {
-    justify-content: space-between;
     margin-left: auto;
   }
 
   .sort-control .select {
-    min-width: 11.75rem;
+    min-width: 8.75rem;
   }
 
   .page-loader {
