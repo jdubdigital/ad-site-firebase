@@ -359,6 +359,44 @@ async function handleAccountDeletion(req, res) {
   });
 }
 
+async function handleProfileLikes(req, res) {
+  if (req.method !== 'GET') {
+    sendJson(res, 405, { error: 'Method not allowed' });
+    return;
+  }
+
+  const user = await requireUser(req);
+  const [profileSnapshot, stateSnapshot] = await Promise.all([
+    db.collection('profiles').doc(user.uid).get(),
+    db.collection('userState').doc(user.uid).get()
+  ]);
+
+  if (!profileSnapshot.exists) {
+    sendJson(res, 200, { count: 0 });
+    return;
+  }
+
+  const userSlug = profileSnapshot.data()?.userSlug || '';
+  if (!userSlug) {
+    sendJson(res, 200, { count: 0 });
+    return;
+  }
+
+  const countSnapshot = await db
+    .collection('userState')
+    .where('favoriteUsers', 'array-contains', userSlug)
+    .count()
+    .get();
+  const rawCount = countSnapshot.data().count || 0;
+  const ownFavorites = stateSnapshot.exists ? stateSnapshot.data().favoriteUsers || [] : [];
+  const count = Math.max(0, rawCount - (ownFavorites.includes(userSlug) ? 1 : 0));
+
+  sendJson(res, 200, {
+    count,
+    userSlug
+  });
+}
+
 function previewContentHeaders(contentType) {
   const headers = {
     'cache-control': contentType.startsWith('text/html') ? 'no-cache' : 'public, max-age=3600',
@@ -1180,6 +1218,11 @@ exports.api = onRequest(async (req, res) => {
 
     if (path === '/account') {
       await handleAccountDeletion(req, res);
+      return;
+    }
+
+    if (path === '/profile-likes') {
+      await handleProfileLikes(req, res);
       return;
     }
 

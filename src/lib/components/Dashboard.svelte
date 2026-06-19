@@ -3,8 +3,9 @@
   import { goto } from '$app/navigation';
   import Copy from '@lucide/svelte/icons/copy';
   import Edit3 from '@lucide/svelte/icons/edit-3';
+  import Heart from '@lucide/svelte/icons/heart';
   import Trash2 from '@lucide/svelte/icons/trash-2';
-  import { getPublicProfileBySlug } from '$lib/repositories/profile';
+  import { getProfileLikeCount, getPublicProfileBySlug } from '$lib/repositories/profile';
   import { signedInEmail, wipeCurrentAccount } from '$lib/stores/account';
   import { ads, deleteAd, hydrateAds, setAdPortfolioFeed } from '$lib/stores/archive';
   import { favoriteUsers } from '$lib/stores/favorites';
@@ -32,6 +33,9 @@
   let accountDeleteStatus = '';
   let favoriteUserDetails = [];
   let favoriteUserDetailsRequest = 0;
+  let profileLikeCount = null;
+  let profileLikeCountLoading = false;
+  let profileLikeCountLoadedFor = '';
 
   const embedScriptOpen = '<script>';
   const embedScriptClose = '</scr' + 'ipt>';
@@ -131,7 +135,23 @@
     }
   }
 
+  async function loadProfileLikeCount(slug) {
+    if (!slug || profileLikeCountLoading || profileLikeCountLoadedFor === slug) return;
+
+    profileLikeCountLoading = true;
+    profileLikeCountLoadedFor = slug;
+
+    try {
+      profileLikeCount = await getProfileLikeCount();
+    } catch (error) {
+      profileLikeCount = null;
+    } finally {
+      profileLikeCountLoading = false;
+    }
+  }
+
   $: loadFavoriteUserDetails($favoriteUsers);
+  $: loadProfileLikeCount(currentProfile?.userSlug);
   $: if (currentProfile) {
     username = username || currentProfile.username || currentProfile.userSlug;
     accountType = accountType || currentProfile.type;
@@ -314,7 +334,7 @@
 
 <section class="dashboard-page">
   <div class="container">
-    <div class="dashboard-grid dashboard-grid-single">
+    <div class="dashboard-grid dashboard-profile-grid">
       <section class="dashboard-card profile-card">
         <div class="avatar">
           {#if currentProfile.avatarUrl}
@@ -335,6 +355,19 @@
           </div>
           <p class="muted">{$signedInEmail || currentProfile.email}</p>
           <p>{currentProfile.description}</p>
+        </div>
+      </section>
+
+      <section class="dashboard-card profile-likes-card" aria-live="polite">
+        <div class="profile-likes-icon">
+          <Heart size={23} strokeWidth={2.1} aria-hidden="true" />
+        </div>
+        <div>
+          <p class="section-label">Profile likes</p>
+          <strong>{profileLikeCountLoading ? '—' : profileLikeCount ?? '—'}</strong>
+          <p class="muted">
+            {profileLikeCount === 1 ? 'user likes your profile' : 'users like your profile'}
+          </p>
         </div>
       </section>
     </div>

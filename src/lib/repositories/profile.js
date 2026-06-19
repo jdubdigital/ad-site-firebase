@@ -39,3 +39,8 @@ export async function checkUserSlugAvailable(slug, currentSlug = '') {
 
   return localProfile.checkUserSlugAvailable(slug, currentSlug);
 }
+
+export async function getProfileLikeCount() {
+  if (!isFirebaseConfigured) return 0;
+  return firebaseProfile.getProfileLikeCount();
+}

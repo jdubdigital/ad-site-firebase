@@ -18,6 +18,7 @@
   let routeAdReady = false;
   let fetchedAdId = '';
   let routeFetchRun = 0;
+  const simulatedTextBars = Array.from({ length: 36 });
 
   $: adId = decodeURIComponent($page.params.id || '');
   $: storeAd = $ads.find((item) => String(item.id) === adId);
@@ -128,18 +129,9 @@
         </div>
 
         <div class="live-placement-content" aria-hidden="true">
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
+          {#each simulatedTextBars as _}
+            <span></span>
+          {/each}
         </div>
 
         <div class="live-placement-ad">
@@ -160,18 +152,9 @@
         </div>
 
         <div class="live-placement-content live-placement-content-after" aria-hidden="true">
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
-          <span></span>
+          {#each simulatedTextBars as _}
+            <span></span>
+          {/each}
         </div>
       </main>
     {:else if ad && !isHtmlProgrammatic}

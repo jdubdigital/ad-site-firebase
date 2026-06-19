@@ -169,3 +169,21 @@ export async function getPublicProfileBySlug(slug) {
   const profileDoc = snapshot.docs[0];
   return cleanProfileDoc(profileDoc.data(), profileDoc.id, profileDoc.data().email);
 }
+
+export async function getProfileLikeCount() {
+  const user = await getCurrentFirebaseUser();
+  if (!user) return 0;
+
+  const response = await fetch('/api/profile-likes', {
+    headers: {
+      authorization: `Bearer ${await user.getIdToken()}`
+    }
+  });
+  const body = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(body.error || 'Unable to load profile likes.');
+  }
+
+  return Math.max(0, Number(body.count) || 0);
+}
