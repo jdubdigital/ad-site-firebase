@@ -459,8 +459,8 @@ video {
   grid-template-columns: minmax(0, 0.92fr) minmax(28rem, 1.08fr);
   align-items: center;
   gap: clamp(2rem, 5vw, 5rem);
-  min-height: clamp(34rem, 72vh, 46rem);
-  padding-block: clamp(3.5rem, 8vh, 6rem);
+  min-height: clamp(27rem, 52svh, 34rem);
+  padding-block: clamp(2rem, 4vh, 3.25rem);
 }
 
 .hero-copy {
@@ -506,7 +506,6 @@ video {
 
 .hero-primary-action {
   background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 64%, var(--pink)));
-  box-shadow: 0 14px 30px color-mix(in srgb, var(--accent) 26%, transparent);
 }
 
 .hero-primary-action:hover {
@@ -532,7 +531,7 @@ video {
 .hero-showcase {
   position: relative;
   z-index: 1;
-  min-height: 29rem;
+  min-height: 24rem;
   perspective: 1000px;
 }
 
@@ -632,7 +631,7 @@ video {
   right: 6%;
   display: grid;
   width: min(27%, 9.5rem);
-  min-height: 21rem;
+  min-height: 18rem;
   align-content: space-between;
   background: linear-gradient(180deg, #ec4899, #7c3aed);
   padding: 0.8rem;
@@ -810,6 +809,7 @@ video {
 }
 
 .toolbar {
+  scroll-margin-top: 5.5rem;
   padding-block: 2rem 1.25rem;
 }
 
@@ -2275,6 +2275,10 @@ video {
 
   .site-header {
     --mobile-header-height: 4.75rem;
+  }
+
+  .toolbar {
+    scroll-margin-top: 4.75rem;
   }
 
   .header-inner {

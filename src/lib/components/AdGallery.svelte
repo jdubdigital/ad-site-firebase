@@ -27,7 +27,7 @@
 <section class="gallery-section">
   <div class="container">
     {#if $filteredAds.length}
-      <MasonryGrid ads={$visibleAds} id="gallery" />
+      <MasonryGrid ads={$visibleAds} />
 
       {#if $visibleCount < $filteredAds.length}
         <div class="loading-row">

@@ -5,7 +5,7 @@
   import MediumChips from './MediumChips.svelte';
 </script>
 
-<section class="toolbar">
+<section id="gallery" class="toolbar">
   <div class="container toolbar-inner">
     <div>
       <p class="muted">
