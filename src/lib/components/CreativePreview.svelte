@@ -9,7 +9,10 @@
   const dispatch = createEventDispatcher();
 
   let frameShell;
+  let htmlFrame;
   let videoElement;
+  let gifSourceElement;
+  let gifCanvas;
   let frameScale = 1;
   let mediaNearViewport = large;
   let mediaInViewport = large;
@@ -18,6 +21,10 @@
   let viewportHeight = 0;
 
   $: src = ad.mediaUrl || getCreativeFallback(ad);
+  $: htmlPreviewSrc =
+    !large && ad.htmlPreviewUrl
+      ? `${ad.htmlPreviewUrl}${ad.htmlPreviewUrl.includes('?') ? '&' : '?'}adArchiveFeedPreview=1`
+      : ad.htmlPreviewUrl;
   $: [creativeWidth, creativeHeight] = String(ad.size || '300x250')
     .split('x')
     .map((value) => Number(value) || 0);
@@ -68,22 +75,60 @@
     tick().then(resizeFrame);
   }
 
-  $: if (!mediaActive && !large && mediaReady) {
-    mediaReady = ad.type === 'html5' && !ad.htmlPreviewUrl;
-  }
-
   $: if (videoElement) {
-    if (mediaInViewport) {
+    if ((large || active) && mediaInViewport) {
       videoElement.play().catch(() => {});
     } else {
       videoElement.pause();
+      if (!large && videoElement.readyState >= 1 && videoElement.currentTime > 0) {
+        videoElement.currentTime = 0;
+      }
     }
+  }
+
+  $: if (htmlFrame) {
+    htmlFrame.contentWindow?.postMessage(
+      {
+        type: 'AD_ARCHIVE_PREVIEW_ACTIVITY',
+        active: Boolean(large || active)
+      },
+      '*'
+    );
+  }
+
+  $: if (gifCanvas && gifSourceElement?.complete) {
+    tick().then(captureGifThumbnail);
   }
 
   function markMediaReady() {
     if (mediaReady) return;
     mediaReady = true;
     tick().then(() => dispatch('mediaready'));
+  }
+
+  function captureGifThumbnail() {
+    if (!gifSourceElement || !gifCanvas) return;
+
+    const context = gifCanvas.getContext('2d');
+    if (!context) return;
+
+    try {
+      context.clearRect(0, 0, intrinsicWidth, intrinsicHeight);
+      context.drawImage(gifSourceElement, 0, 0, intrinsicWidth, intrinsicHeight);
+    } catch (error) {}
+
+    markMediaReady();
+  }
+
+  function handleHtmlFrameLoad() {
+    markMediaReady();
+    htmlFrame?.contentWindow?.postMessage(
+      {
+        type: 'AD_ARCHIVE_PREVIEW_ACTIVITY',
+        active: Boolean(large || active)
+      },
+      '*'
+    );
   }
 
   function observeMediaWindow(node) {
@@ -151,24 +196,18 @@
       style={shellStyle}
       aria-busy={!mediaReady}
     >
-      {#if mediaActive}
-        <iframe
-          src={ad.htmlPreviewUrl}
-          title={`${ad.title} programmatic preview`}
-          sandbox="allow-scripts"
-          loading={large ? 'eager' : 'lazy'}
-          referrerpolicy="no-referrer"
-          tabindex="-1"
-          style={frameStyle}
-          on:load={markMediaReady}
-        ></iframe>
-      {:else}
-        <div class="creative-idle-state" aria-hidden="true">
-          <span class="creative-idle-icon">▶</span>
-          <span>Preview HTML5</span>
-        </div>
-      {/if}
-      {#if mediaActive && !mediaReady}
+      <iframe
+        bind:this={htmlFrame}
+        src={htmlPreviewSrc}
+        title={`${ad.title} programmatic preview`}
+        sandbox="allow-scripts"
+        loading={large ? 'eager' : 'lazy'}
+        referrerpolicy="no-referrer"
+        tabindex="-1"
+        style={frameStyle}
+        on:load={handleHtmlFrameLoad}
+      ></iframe>
+      {#if !mediaReady}
         <div class="creative-loading-layer" aria-hidden="true">
           <span class="loading-spinner small"></span>
         </div>
@@ -198,28 +237,22 @@
     style={mediaShellStyle}
     aria-busy={!mediaReady}
   >
-    {#if mediaActive}
-      <video
-        bind:this={videoElement}
-        autoplay={mediaInViewport}
-        loop
-        muted
-        playsinline
-        disablepictureinpicture
-        controlslist="nodownload nofullscreen noremoteplayback"
-        aria-label={`${ad.title} ${getAdTypeLabel(ad.type)} preview`}
-        on:loadeddata={markMediaReady}
-        on:canplay={markMediaReady}
-      >
-        <source src={src} type="video/mp4" />
-      </video>
-    {:else}
-      <div class="creative-idle-state" aria-hidden="true">
-        <span class="creative-idle-icon">▶</span>
-        <span>Preview video</span>
-      </div>
-    {/if}
-    {#if mediaActive && !mediaReady}
+    <video
+      bind:this={videoElement}
+      autoplay={large}
+      preload={large ? 'auto' : 'metadata'}
+      loop
+      muted
+      playsinline
+      disablepictureinpicture
+      controlslist="nodownload nofullscreen noremoteplayback"
+      aria-label={`${ad.title} ${getAdTypeLabel(ad.type)} preview`}
+      on:loadeddata={markMediaReady}
+      on:canplay={markMediaReady}
+    >
+      <source src={src} type="video/mp4" />
+    </video>
+    {#if !mediaReady}
       <div class="creative-loading-layer" aria-hidden="true">
         <span class="loading-spinner small"></span>
       </div>
@@ -235,15 +268,27 @@
     style={mediaShellStyle}
     aria-busy={!mediaReady}
   >
-    {#if mediaActive}
+    <img
+      bind:this={gifSourceElement}
+      class="gif-thumbnail-source"
+      src={src}
+      alt=""
+      aria-hidden="true"
+      on:load={captureGifThumbnail}
+      on:error={markMediaReady}
+    />
+    {#if large || active}
       <img src={src} alt={ad.title} loading={large ? 'eager' : 'lazy'} on:load={markMediaReady} on:error={markMediaReady} />
     {:else}
-      <div class="creative-idle-state" aria-hidden="true">
-        <span class="creative-idle-icon">▶</span>
-        <span>Preview GIF</span>
-      </div>
+      <canvas
+        bind:this={gifCanvas}
+        class="gif-thumbnail-canvas"
+        width={intrinsicWidth}
+        height={intrinsicHeight}
+        aria-label={`${ad.title} GIF preview`}
+      ></canvas>
     {/if}
-    {#if mediaActive && !mediaReady}
+    {#if !mediaReady}
       <div class="creative-loading-layer" aria-hidden="true">
         <span class="loading-spinner small"></span>
       </div>
