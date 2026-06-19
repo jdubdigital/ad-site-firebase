@@ -117,7 +117,6 @@ export const users = [
 export const defaultDashboardProfile = {
   name: 'New User',
   type: 'Individual',
-  email: 'you@example.com',
   description: 'Add a short public profile summary for your creative work and shared ads.',
   avatarUrl: '',
   username: 'new-user',

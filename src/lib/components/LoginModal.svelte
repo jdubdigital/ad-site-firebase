@@ -6,9 +6,10 @@
   import { createAccount, deleteCurrentAccount, signIn } from '$lib/stores/account';
   import { checkUserSlugAvailable, saveProfile } from '$lib/stores/profile';
   import { closeLogin, loginMode, loginOpen } from '$lib/stores/ui';
-  import { createUsernameSlug } from '$lib/utils/slug';
+  import { cleanDisplayName, createUsernameSlug } from '$lib/utils/slug';
 
   let email = '';
+  let displayName = '';
   let username = '';
   let usernameStatus = '';
   let usernameAvailable = false;
@@ -85,6 +86,11 @@
 
     try {
       if (isCreate) {
+        const requestedDisplayName = cleanDisplayName(displayName, '');
+        if (requestedDisplayName.length < 2) {
+          throw new Error('Choose a display name with at least 2 characters.');
+        }
+
         const requestedSlug = createUsernameSlug(usernameSlug, '');
         if (!requestedSlug || requestedSlug.length < 3) {
           throw new Error('Choose a username with at least 3 characters.');
@@ -99,8 +105,7 @@
           accountCreated = true;
           await saveProfile({
             ...defaultDashboardProfile,
-            email: cleanedEmail,
-            name: requestedSlug,
+            name: requestedDisplayName,
             type: accountType,
             username: requestedSlug,
             userSlug: requestedSlug
@@ -114,6 +119,7 @@
       }
 
       email = '';
+      displayName = '';
       username = '';
       usernameStatus = '';
       usernameAvailable = false;
@@ -177,6 +183,22 @@
                 <span class:status-good={usernameAvailable} class="field-help">{usernameStatus}</span>
               {/if}
               <span class="field-help">Cannot be changed later.</span>
+            </label>
+
+            <label class="field-label">
+              Display name
+              <input
+                bind:value={displayName}
+                class="field"
+                type="text"
+                required
+                minlength="2"
+                maxlength="64"
+                autocomplete="name"
+                placeholder="Your public name"
+                disabled={submitting}
+              />
+              <span class="field-help">Shown publicly; your email stays private.</span>
             </label>
 
             <div>

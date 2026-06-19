@@ -6,7 +6,7 @@
   import Heart from '@lucide/svelte/icons/heart';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import { getProfileLikeCount, getPublicProfileBySlug } from '$lib/repositories/profile';
-  import { signedInEmail, wipeCurrentAccount } from '$lib/stores/account';
+  import { wipeCurrentAccount } from '$lib/stores/account';
   import { ads, deleteAd, hydrateAds, setAdPortfolioFeed } from '$lib/stores/archive';
   import { favoriteUsers } from '$lib/stores/favorites';
   import { profile, saveProfile } from '$lib/stores/profile';
@@ -19,6 +19,8 @@
     getUserBySlug,
     getUserInitials
   } from '$lib/utils/ad-utils';
+  import { cleanDisplayName } from '$lib/utils/slug';
+  let displayName = '';
   let username = '';
   let accountType = 'Brand';
   let description = '';
@@ -95,7 +97,7 @@
   $: currentProfile = $profile;
   $: siteOrigin = browser ? window.location.origin : 'https://ad-archive-34f6c.web.app';
   $: portfolioUrl = currentProfile?.userSlug ? `${siteOrigin}/embed/user/${encodeURIComponent(currentProfile.userSlug)}` : '';
-  $: portfolioTitle = `${currentProfile?.username || currentProfile?.userSlug || 'Ad Archive'} portfolio`;
+  $: portfolioTitle = `${currentProfile?.name || currentProfile?.username || currentProfile?.userSlug || 'Ad Archive'} portfolio`;
   $: portfolioFrameId = currentProfile?.userSlug
     ? `adarchive-portfolio-${String(currentProfile.userSlug).replace(/[^a-z0-9_-]/gi, '-')}`
     : 'adarchive-portfolio-feed';
@@ -153,12 +155,14 @@
   $: loadFavoriteUserDetails($favoriteUsers);
   $: loadProfileLikeCount(currentProfile?.userSlug);
   $: if (currentProfile) {
+    displayName = displayName || currentProfile.name;
     username = username || currentProfile.username || currentProfile.userSlug;
     accountType = accountType || currentProfile.type;
     description = description || currentProfile.description;
   }
 
   function syncFields() {
+    displayName = currentProfile.name;
     username = currentProfile.username || currentProfile.userSlug;
     accountType = currentProfile.type;
     description = currentProfile.description;
@@ -170,7 +174,11 @@
     savingProfile = true;
 
     try {
+      const requestedName = cleanDisplayName(displayName, '');
+      if (requestedName.length < 2) throw new Error('Use at least 2 characters for your display name.');
+
       await saveProfile({
+        name: requestedName,
         type: accountType,
         description: description.trim() || currentProfile.description
       });
@@ -338,22 +346,22 @@
       <section class="dashboard-card profile-card">
         <div class="avatar">
           {#if currentProfile.avatarUrl}
-            <img src={currentProfile.avatarUrl} alt={`${currentProfile.username || currentProfile.userSlug} profile picture`} />
+            <img src={currentProfile.avatarUrl} alt={`${currentProfile.name} profile picture`} />
           {:else}
-            {getUserInitials(currentProfile.username || currentProfile.userSlug)}
+            {getUserInitials(currentProfile.name)}
           {/if}
         </div>
           <div class="profile-card-body">
           <div class="profile-card-header">
             <div class="user-name">
-              <h2>{currentProfile.username || currentProfile.userSlug}</h2>
+              <h2>{currentProfile.name}</h2>
               <span class="badge">{currentProfile.type}</span>
             </div>
             <a class="button button-secondary profile-view-button" href={`/user/${encodeURIComponent(currentProfile.userSlug)}`}>
               View public profile
             </a>
           </div>
-          <p class="muted">{$signedInEmail || currentProfile.email}</p>
+          <p class="muted">@{currentProfile.username || currentProfile.userSlug}</p>
           <p>{currentProfile.description}</p>
         </div>
       </section>
@@ -382,9 +390,9 @@
               <div class="profile-picture-row">
                 <div class="avatar small">
                   {#if currentProfile.avatarUrl}
-                    <img src={currentProfile.avatarUrl} alt={`${currentProfile.username || currentProfile.userSlug} profile picture`} />
+                    <img src={currentProfile.avatarUrl} alt={`${currentProfile.name} profile picture`} />
                   {:else}
-                    {getUserInitials(currentProfile.username || currentProfile.userSlug)}
+                    {getUserInitials(displayName || currentProfile.name)}
                   {/if}
                 </div>
                 <label class="button button-secondary">
@@ -407,6 +415,20 @@
                 value={username}
               />
               <span class="field-help">Cannot be changed.</span>
+            </label>
+
+            <label class="field-label">
+              Display name
+              <input
+                class="field"
+                type="text"
+                required
+                minlength="2"
+                maxlength="64"
+                autocomplete="name"
+                bind:value={displayName}
+              />
+              <span class="field-help">This is the name shown on your profile and posts.</span>
             </label>
 
             <label class="field-label">

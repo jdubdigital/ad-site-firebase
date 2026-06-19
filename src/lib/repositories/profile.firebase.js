@@ -1,6 +1,6 @@
 import { getCurrentFirebaseUser, getFirebaseServices } from '$lib/firebase/client';
 import { defaultDashboardProfile, users } from '$lib/data/catalog';
-import { createSlug, createUsernameSlug } from '$lib/utils/slug';
+import { cleanDisplayName, createSlug, createUsernameSlug } from '$lib/utils/slug';
 
 const demoProfileSlug = 'mohegan-sun';
 
@@ -8,46 +8,56 @@ function isStaticUserSlug(slug) {
   return users.some((user) => user.slug === slug);
 }
 
-function cleanProfileDoc(data, uid, email) {
+function cleanProfileDoc(data, uid, email, recoveredName = '') {
+  const { email: _privateEmail, ...publicData } = data || {};
   const emailSlug = createSlug(email?.split('@')[0], uid);
   const userSlug = createUsernameSlug(
-    !data?.userSlug || data.userSlug === demoProfileSlug ? emailSlug : data.userSlug,
+    !publicData.userSlug || publicData.userSlug === demoProfileSlug ? emailSlug : publicData.userSlug,
     emailSlug
   );
-  const username = createUsernameSlug(data?.username || userSlug, userSlug);
-  const publicName = username || userSlug || defaultDashboardProfile.userSlug;
+  const username = createUsernameSlug(publicData.username || userSlug, userSlug);
+  const storedName = cleanDisplayName(publicData.name, '');
+  const nameWasForcedToUsername = !storedName || storedName === username || storedName === userSlug;
+  const publicName = cleanDisplayName(
+    nameWasForcedToUsername ? recoveredName || storedName : storedName,
+    username || userSlug || defaultDashboardProfile.name
+  );
 
   return {
     ...defaultDashboardProfile,
-    ...data,
+    ...publicData,
     name: publicName,
-    email: data?.email || email || defaultDashboardProfile.email,
     username,
     userSlug
   };
 }
 
 function cleanProfileForSave(profile, user) {
+  const { email: _privateEmail, ...publicProfile } = profile || {};
   const fallbackSlug = createUsernameSlug(user.email?.split('@')[0], user.uid);
-  const userSlug = createUsernameSlug(profile.userSlug || profile.username || fallbackSlug, fallbackSlug);
+  const userSlug = createUsernameSlug(publicProfile.userSlug || publicProfile.username || fallbackSlug, fallbackSlug);
+  const name = cleanDisplayName(publicProfile.name, userSlug);
 
   return {
     ...defaultDashboardProfile,
-    ...profile,
-    name: userSlug,
-    email: profile.email || user.email || defaultDashboardProfile.email,
+    ...publicProfile,
+    name,
     username: userSlug,
     userSlug
   };
 }
 
-async function hasOtherLegacyProfileWithSlug(services, slug, uid) {
-  const { collection, getDocs, limit, query, where } = services.firestoreApi;
-  const snapshot = await getDocs(
-    query(collection(services.db, 'profiles'), where('userSlug', '==', slug), limit(2))
-  );
+async function recoverLegacyDisplayName(services, data) {
+  const storedName = cleanDisplayName(data?.name, '');
+  const userSlug = createUsernameSlug(data?.userSlug || data?.username, '');
+  const username = createUsernameSlug(data?.username || userSlug, userSlug);
+  const needsRecovery = !storedName || storedName === username || storedName === userSlug;
 
-  return snapshot.docs.some((profileDoc) => profileDoc.id !== uid);
+  if (!needsRecovery || !data?.displayNameKey) return '';
+
+  const { doc, getDoc } = services.firestoreApi;
+  const displayNameSnapshot = await getDoc(doc(services.db, 'displayNames', data.displayNameKey));
+  return cleanDisplayName(displayNameSnapshot.data()?.name, '');
 }
 
 async function syncProfileToAds(services, profile, uid) {
@@ -71,14 +81,22 @@ export async function getDashboardProfile() {
   const services = await getFirebaseServices();
   const user = await getCurrentFirebaseUser();
   if (!services || !user) return null;
-  const { doc, getDoc } = services.firestoreApi;
+  const { deleteField, doc, getDoc, updateDoc } = services.firestoreApi;
 
-  const snapshot = await getDoc(doc(services.db, 'profiles', user.uid));
+  const profileRef = doc(services.db, 'profiles', user.uid);
+  const snapshot = await getDoc(profileRef);
   if (!snapshot.exists()) {
     return cleanProfileDoc({}, user.uid, user.email);
   }
 
-  return cleanProfileDoc(snapshot.data(), user.uid, user.email);
+  const data = snapshot.data();
+  const recoveredName = await recoverLegacyDisplayName(services, data);
+
+  if (Object.prototype.hasOwnProperty.call(data, 'email')) {
+    await updateDoc(profileRef, { email: deleteField() }).catch(() => {});
+  }
+
+  return cleanProfileDoc(data, user.uid, user.email, recoveredName);
 }
 
 export async function checkUserSlugAvailable(slug, ownerUid = '') {
@@ -90,16 +108,14 @@ export async function checkUserSlugAvailable(slug, ownerUid = '') {
   const { doc, getDoc } = services.firestoreApi;
 
   const usernameSnapshot = await getDoc(doc(services.db, 'usernames', cleanSlug));
-  if (usernameSnapshot.exists() && usernameSnapshot.data().ownerUid !== ownerUid) return false;
-
-  return !(await hasOtherLegacyProfileWithSlug(services, cleanSlug, ownerUid));
+  return !usernameSnapshot.exists() || usernameSnapshot.data().ownerUid === ownerUid;
 }
 
 export async function setDashboardProfile(profile) {
   const services = await getFirebaseServices();
   const user = await getCurrentFirebaseUser();
   if (!services || !user) return;
-  const { doc, runTransaction, serverTimestamp } = services.firestoreApi;
+  const { deleteField, doc, runTransaction, serverTimestamp } = services.firestoreApi;
   const nextProfile = cleanProfileForSave(profile, user);
 
   if (!(await checkUserSlugAvailable(nextProfile.userSlug, user.uid))) {
@@ -136,15 +152,14 @@ export async function setDashboardProfile(profile) {
       { merge: true }
     );
 
-    transaction.set(
-      profileRef,
-      {
-        ...nextProfile,
-        ownerUid: user.uid,
-        updatedAt: serverTimestamp()
-      },
-      { merge: true }
-    );
+    const profileWrite = {
+      ...nextProfile,
+      ownerUid: user.uid,
+      updatedAt: serverTimestamp()
+    };
+    if (profileSnapshot.exists()) profileWrite.email = deleteField();
+
+    transaction.set(profileRef, profileWrite, { merge: true });
 
     return {
       ...nextProfile,
@@ -157,17 +172,17 @@ export async function setDashboardProfile(profile) {
 }
 
 export async function getPublicProfileBySlug(slug) {
-  const services = await getFirebaseServices();
-  if (!services || !slug) return null;
-  const { collection, getDocs, limit, query, where } = services.firestoreApi;
+  if (!slug) return null;
 
-  const snapshot = await getDocs(
-    query(collection(services.db, 'profiles'), where('userSlug', '==', slug), limit(1))
-  );
-  if (snapshot.empty) return null;
+  const response = await fetch(`/api/profile?slug=${encodeURIComponent(slug)}`);
+  if (response.status === 404) return null;
 
-  const profileDoc = snapshot.docs[0];
-  return cleanProfileDoc(profileDoc.data(), profileDoc.id, profileDoc.data().email);
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(body.error || 'Unable to load this public profile.');
+  }
+
+  return body.profile || null;
 }
 
 export async function getProfileLikeCount() {

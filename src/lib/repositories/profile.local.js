@@ -1,6 +1,6 @@
 import { defaultDashboardProfile } from '$lib/data/catalog';
 import { getUserBySlug } from '$lib/utils/ad-utils';
-import { createUsernameSlug } from '$lib/utils/slug';
+import { cleanDisplayName, createUsernameSlug } from '$lib/utils/slug';
 import { readJson, writeJson } from './storage';
 
 const DASHBOARD_PROFILE_KEY = 'dashboardProfile';
@@ -8,7 +8,7 @@ const DASHBOARD_PROFILE_KEY = 'dashboardProfile';
 export function getDashboardProfile() {
   const storedProfile = readJson(DASHBOARD_PROFILE_KEY, {});
   const legacySlugKey = `${'post' + 'er'}Slug`;
-  const { [legacySlugKey]: legacyUserSlug, ...currentProfile } = storedProfile;
+  const { [legacySlugKey]: legacyUserSlug, email: _privateEmail, ...currentProfile } = storedProfile;
   const userSlug = createUsernameSlug(
     currentProfile.userSlug || legacyUserSlug || currentProfile.username,
     defaultDashboardProfile.userSlug
@@ -17,17 +17,21 @@ export function getDashboardProfile() {
   return {
     ...defaultDashboardProfile,
     ...currentProfile,
-    name: createUsernameSlug(currentProfile.username || userSlug, userSlug),
+    name: cleanDisplayName(currentProfile.name, userSlug),
     username: createUsernameSlug(currentProfile.username || userSlug, userSlug),
     userSlug
   };
 }
 
 export function setDashboardProfile(profile) {
-  const userSlug = createUsernameSlug(profile.userSlug || profile.username, defaultDashboardProfile.userSlug);
+  const { email: _privateEmail, ...publicProfile } = profile || {};
+  const userSlug = createUsernameSlug(
+    publicProfile.userSlug || publicProfile.username,
+    defaultDashboardProfile.userSlug
+  );
   const saved = {
-    ...profile,
-    name: userSlug,
+    ...publicProfile,
+    name: cleanDisplayName(publicProfile.name, userSlug),
     username: userSlug,
     userSlug
   };

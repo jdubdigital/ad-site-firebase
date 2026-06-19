@@ -104,6 +104,64 @@ async function collectionCount(collectionName) {
   return snapshot.data().count || 0;
 }
 
+function cleanPublicProfileText(value, fallback = '', maxLength = 160) {
+  const cleaned = String(value || '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength);
+
+  return cleaned || fallback;
+}
+
+async function publicProfilePayload(profileSnapshot) {
+  const data = profileSnapshot.data() || {};
+  const userSlug = cleanPublicProfileText(data.userSlug || data.username, '', 48);
+  const username = cleanPublicProfileText(data.username || userSlug, userSlug, 48);
+  const storedName = cleanPublicProfileText(data.name, '', 64);
+  let name = storedName;
+
+  if ((!name || name === username || name === userSlug) && data.displayNameKey) {
+    const legacyNameSnapshot = await db.collection('displayNames').doc(String(data.displayNameKey)).get();
+    name = cleanPublicProfileText(legacyNameSnapshot.data()?.name, name, 64);
+  }
+
+  return {
+    name: name || username || userSlug || 'Ad Archive user',
+    type: cleanPublicProfileText(data.type, 'Individual', 32),
+    description: cleanPublicProfileText(
+      data.description,
+      'Public profile for ads and creative references shared by this user.',
+      500
+    ),
+    avatarUrl: typeof data.avatarUrl === 'string' ? data.avatarUrl : '',
+    username,
+    userSlug
+  };
+}
+
+async function handlePublicProfile(req, res) {
+  if (req.method !== 'GET') {
+    sendJson(res, 405, { error: 'Method not allowed' });
+    return;
+  }
+
+  const slug = cleanPublicProfileText(req.query.slug, '', 48);
+  if (!slug) {
+    sendJson(res, 400, { error: 'A profile slug is required.' });
+    return;
+  }
+
+  const snapshot = await db.collection('profiles').where('userSlug', '==', slug).limit(1).get();
+  if (snapshot.empty) {
+    sendJson(res, 404, { error: 'Profile not found.' });
+    return;
+  }
+
+  sendJson(res, 200, {
+    profile: await publicProfilePayload(snapshot.docs[0])
+  });
+}
+
 function parseJsonBody(req) {
   if (!req.body) return {};
   if (typeof req.body === 'object') return req.body;
@@ -1192,6 +1250,11 @@ exports.api = onRequest(async (req, res) => {
         profiles,
         serverTime: new Date().toISOString()
       });
+      return;
+    }
+
+    if (path === '/profile') {
+      await handlePublicProfile(req, res);
       return;
     }
 
