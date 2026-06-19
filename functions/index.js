@@ -468,14 +468,6 @@ function html5PreviewBootstrap() {
   var RUNTIME_UPDATE = 'AD_ARCHIVE_RUNTIME_UPDATE';
   var RUNTIME_LOG = 'AD_ARCHIVE_RUNTIME_LOG';
   var RUNTIME_READY = 'AD_ARCHIVE_RUNTIME_READY';
-  var PREVIEW_ACTIVITY = 'AD_ARCHIVE_PREVIEW_ACTIVITY';
-  var previewMode = /(?:^|[?&])adArchiveFeedPreview=1(?:&|$)/.test(window.location.search);
-  var previewActive = true;
-  var pausedAnimationFrames = [];
-  var pausedTimeouts = [];
-  var nativeRequestAnimationFrame = window.requestAnimationFrame.bind(window);
-  var nativeSetTimeout = window.setTimeout.bind(window);
-  var nativeSetInterval = window.setInterval.bind(window);
   var listeners = {};
   var mraidListeners = {};
   var safeFrameListeners = [];
@@ -487,81 +479,6 @@ function html5PreviewBootstrap() {
   var bodyScrollAccessorsInstalled = false;
   var lastViewportWidth = 0;
   var lastViewportHeight = 0;
-
-  if (previewMode) {
-    window.requestAnimationFrame = function (callback) {
-      return nativeRequestAnimationFrame(function (timestamp) {
-        if (previewActive) {
-          callback(timestamp);
-        } else {
-          pausedAnimationFrames.push(callback);
-        }
-      });
-    };
-    window.setTimeout = function (callback, delay) {
-      var args = Array.prototype.slice.call(arguments, 2);
-      if (typeof callback !== 'function') return nativeSetTimeout.apply(window, arguments);
-
-      return nativeSetTimeout(function () {
-        if (previewActive) callback.apply(window, args);
-        else pausedTimeouts.push({ callback: callback, args: args });
-      }, delay);
-    };
-    window.setInterval = function (callback, delay) {
-      var args = Array.prototype.slice.call(arguments, 2);
-      if (typeof callback !== 'function') return nativeSetInterval.apply(window, arguments);
-
-      return nativeSetInterval(function () {
-        if (previewActive) callback.apply(window, args);
-      }, delay);
-    };
-  }
-
-  function ensurePreviewPauseStyle() {
-    if (!previewMode || document.getElementById('ad-archive-preview-pause-style')) return;
-    var style = document.createElement('style');
-    style.id = 'ad-archive-preview-pause-style';
-    style.textContent =
-      'html.ad-archive-preview-paused *,html.ad-archive-preview-paused *::before,html.ad-archive-preview-paused *::after{' +
-      'animation-play-state:paused!important;transition-duration:0s!important;}';
-    (document.head || document.documentElement).appendChild(style);
-  }
-
-  function syncPreviewActivity(active) {
-    if (!previewMode) return;
-    previewActive = Boolean(active);
-    ensurePreviewPauseStyle();
-    document.documentElement.classList.toggle('ad-archive-preview-paused', !previewActive);
-
-    try {
-      document.getAnimations().forEach(function (animation) {
-        if (previewActive) animation.play();
-        else animation.pause();
-      });
-    } catch (error) {}
-
-    document.querySelectorAll('video, audio').forEach(function (media) {
-      if (previewActive) media.play().catch(function () {});
-      else media.pause();
-    });
-
-    if (previewActive && pausedAnimationFrames.length) {
-      var callbacks = pausedAnimationFrames.slice();
-      pausedAnimationFrames = [];
-      callbacks.forEach(function (callback) {
-        nativeRequestAnimationFrame(callback);
-      });
-    }
-    if (previewActive && pausedTimeouts.length) {
-      var timeouts = pausedTimeouts.slice();
-      pausedTimeouts = [];
-      timeouts.forEach(function (timeout) {
-        nativeSetTimeout(function () {
-          timeout.callback.apply(window, timeout.args);
-        }, 0);
-      });
-    }
-  }
 
   function serialize(value, depth) {
     if (depth > 2) return '[Object]';
@@ -841,10 +758,6 @@ function html5PreviewBootstrap() {
   installScrollAccessors();
   window.addEventListener('message', function (event) {
     var data = event.data || {};
-    if (data.type === PREVIEW_ACTIVITY) {
-      syncPreviewActivity(data.active);
-      return;
-    }
     if (data.type !== RUNTIME_UPDATE) return;
 
     runtimeState = Object.assign({}, data);
