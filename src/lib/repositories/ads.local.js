@@ -114,3 +114,26 @@ export function persistDeletedAd(ad) {
     setEditedAds(editedAds);
   }
 }
+
+export function persistAdPortfolioFeed(adId, included) {
+  const portfolioFeedEnabled = Boolean(included);
+  const submittedAds = getSubmittedAds();
+  const submittedIndex = submittedAds.findIndex((item) => item.id === adId);
+
+  if (submittedIndex >= 0) {
+    submittedAds[submittedIndex] = {
+      ...submittedAds[submittedIndex],
+      portfolioFeedEnabled
+    };
+    setSubmittedAds(submittedAds);
+  }
+
+  const editedAds = getEditedAds();
+  setEditedAds({
+    ...editedAds,
+    [adId]: {
+      ...(editedAds[adId] || {}),
+      portfolioFeedEnabled
+    }
+  });
+}

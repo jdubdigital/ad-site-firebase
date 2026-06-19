@@ -3,6 +3,7 @@ import {
   createSubmittedAd,
   getLikedAdIds,
   loadAds,
+  persistAdPortfolioFeed,
   persistAdLike,
   persistDeletedAd,
   persistEditedAd,
@@ -166,4 +167,24 @@ export async function deleteAd(adId) {
   if (likedIds.includes(adId)) {
     await setLikedAdIds(likedIds.filter((id) => id !== adId));
   }
+}
+
+export async function setAdPortfolioFeed(adId, included) {
+  const existing = get(ads).find((ad) => ad.id === adId);
+  if (!existing) throw new Error('This ad could not be found.');
+
+  const portfolioFeedEnabled = Boolean(included);
+  await persistAdPortfolioFeed(existing, portfolioFeedEnabled);
+
+  ads.update((items) =>
+    items.map((ad) =>
+      ad.id === adId
+        ? {
+            ...ad,
+            portfolioFeedEnabled,
+            updatedAt: new Date().toISOString()
+          }
+        : ad
+    )
+  );
 }

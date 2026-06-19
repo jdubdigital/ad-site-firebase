@@ -192,7 +192,8 @@
       mediaUrl: pendingMediaData || existingMediaUrl,
       mediaFileName: cleanSubmittedValue(pendingFileName),
       notes: cleanSubmittedValue(notes),
-      type
+      type,
+      portfolioFeedEnabled: editingAd?.portfolioFeedEnabled !== false
     };
 
     function handleSubmitProgress(event) {

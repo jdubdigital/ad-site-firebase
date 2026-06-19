@@ -1656,6 +1656,29 @@ video {
   justify-content: flex-start;
 }
 
+.portfolio-feed-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  margin-top: 0.7rem;
+  color: var(--text);
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.portfolio-feed-toggle input {
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.portfolio-feed-toggle:has(input:disabled) {
+  color: var(--muted);
+  cursor: wait;
+}
+
 .embed-app {
   background: transparent;
 }

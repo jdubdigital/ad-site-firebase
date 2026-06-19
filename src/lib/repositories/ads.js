@@ -75,6 +75,15 @@ export async function persistDeletedAd(ad) {
   localAds.persistDeletedAd(ad);
 }
 
+export async function persistAdPortfolioFeed(ad, included) {
+  if (isFirebaseConfigured && ad.source === 'firebase') {
+    await firebaseAds.persistAdPortfolioFeed(ad.id, included);
+    return;
+  }
+
+  localAds.persistAdPortfolioFeed(ad.id, included);
+}
+
 export async function persistAdLike(adId, liked) {
   if (isFirebaseConfigured) {
     await firebaseAds.persistAdLike(adId, liked);

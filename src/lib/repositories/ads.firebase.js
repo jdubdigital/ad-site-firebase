@@ -213,6 +213,18 @@ export async function persistDeletedAd(ad) {
   await deleteDoc(doc(services.db, 'ads', String(ad.id)));
 }
 
+export async function persistAdPortfolioFeed(adId, included) {
+  const services = await getFirebaseServices();
+  const user = await getCurrentFirebaseUser();
+  if (!services || !user) throw new Error('Sign in before updating your portfolio feed.');
+  const { doc, serverTimestamp, updateDoc } = services.firestoreApi;
+
+  await updateDoc(doc(services.db, 'ads', String(adId)), {
+    portfolioFeedEnabled: Boolean(included),
+    updatedAt: serverTimestamp()
+  });
+}
+
 export async function persistAdLike(adId, liked) {
   const services = await getFirebaseServices();
   const user = await getCurrentFirebaseUser();

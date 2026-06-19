@@ -273,7 +273,8 @@
       notes: cleanSubmittedValue(notes),
       type: analysis.type,
       isResponsiveCreative: isProgrammatic ? Boolean(programmaticResponsive) : false,
-      showcaseSizes: isProgrammatic ? selectedSizes : [sizeValue]
+      showcaseSizes: isProgrammatic ? selectedSizes : [sizeValue],
+      portfolioFeedEnabled: existingAsset.portfolioFeedEnabled !== false
     };
   }
 

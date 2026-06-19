@@ -6,7 +6,7 @@
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import { getPublicProfileBySlug } from '$lib/repositories/profile';
   import { signedInEmail, wipeCurrentAccount } from '$lib/stores/account';
-  import { ads, deleteAd, hydrateAds } from '$lib/stores/archive';
+  import { ads, deleteAd, hydrateAds, setAdPortfolioFeed } from '$lib/stores/archive';
   import { favoriteUsers } from '$lib/stores/favorites';
   import { profile, saveProfile } from '$lib/stores/profile';
   import {
@@ -26,6 +26,8 @@
   let copyStatus = '';
   let deleteStatus = '';
   let deletingAdIds = new Set();
+  let portfolioStatus = '';
+  let updatingPortfolioAdIds = new Set();
   let deletingAccount = false;
   let accountDeleteStatus = '';
   let favoriteUserDetails = [];
@@ -103,6 +105,7 @@
       })
     : '';
   $: myAds = $ads.filter((ad) => getAdUserSlug(ad) === currentProfile.userSlug);
+  $: portfolioAds = myAds.filter((ad) => ad.portfolioFeedEnabled !== false);
   $: likedAds = $ads.filter((ad) => ad.liked).sort((a, b) => getAdChronology(b) - getAdChronology(a));
   async function loadFavoriteUserDetails(slugs) {
     const request = ++favoriteUserDetailsRequest;
@@ -221,6 +224,24 @@
     } finally {
       deletingAdIds = new Set([...deletingAdIds].filter((id) => id !== ad.id));
       setTimeout(() => (deleteStatus = ''), 2200);
+    }
+  }
+
+  async function handlePortfolioFeedChange(ad, event) {
+    const checkbox = event.currentTarget;
+    const included = checkbox.checked;
+    portfolioStatus = '';
+    updatingPortfolioAdIds = new Set([...updatingPortfolioAdIds, ad.id]);
+
+    try {
+      await setAdPortfolioFeed(ad.id, included);
+      portfolioStatus = included ? `"${ad.title}" added to the portfolio feed.` : `"${ad.title}" removed from the portfolio feed.`;
+    } catch (error) {
+      checkbox.checked = ad.portfolioFeedEnabled !== false;
+      portfolioStatus = error?.message || 'Unable to update the portfolio feed.';
+    } finally {
+      updatingPortfolioAdIds = new Set([...updatingPortfolioAdIds].filter((id) => id !== ad.id));
+      setTimeout(() => (portfolioStatus = ''), 2400);
     }
   }
 
@@ -386,7 +407,7 @@
         <section class="dashboard-panel">
           <div class="panel-header">
             <h3>Portfolio feed</h3>
-            <span class="muted">{myAds.length} ads</span>
+            <span class="muted">{portfolioAds.length} selected</span>
           </div>
           <div class="field-grid">
             <label class="field-label">
@@ -468,12 +489,24 @@
         {#if deleteStatus}
           <p class="status">{deleteStatus}</p>
         {/if}
+        {#if portfolioStatus}
+          <p class="status">{portfolioStatus}</p>
+        {/if}
         {#if myAds.length}
           {#each myAds as ad}
             <div class="dashboard-row">
               <div>
                 <strong>{ad.title}</strong>
                 <p class="muted">{ad.category} · {getMediumLabel(ad.medium)} · {ad.tags} · {ad.size} · {getAdTypeLabel(ad.type)}</p>
+                <label class="portfolio-feed-toggle">
+                  <input
+                    type="checkbox"
+                    checked={ad.portfolioFeedEnabled !== false}
+                    disabled={updatingPortfolioAdIds.has(ad.id)}
+                    on:change={(event) => handlePortfolioFeedChange(ad, event)}
+                  />
+                  <span>{updatingPortfolioAdIds.has(ad.id) ? 'Saving portfolio selection...' : 'Add to portfolio feed'}</span>
+                </label>
               </div>
               <div class="row-actions post-actions">
                 <span class="muted">{ad.likes} likes</span>
