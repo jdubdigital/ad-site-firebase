@@ -15,6 +15,11 @@
   let mediaReady = false;
   let mediaKey = '';
   let viewportHeight = 0;
+  let videoHovered = false;
+  let videoPosterReady = false;
+  let videoPosterTime = 2;
+  let videoAspectRatio = 0;
+  let hoverPreviewAvailable = false;
 
   $: src = ad.mediaUrl || getCreativeFallback(ad);
   $: [creativeWidth, creativeHeight] = String(ad.size || '300x250')
@@ -28,13 +33,20 @@
   $: shellStyle = large
     ? `width: ${shellWidth}px; height: ${shellHeight}px;`
     : `height: ${shellHeight}px;`;
-  $: mediaShellStyle = !large && !mediaActive ? `aspect-ratio: ${intrinsicWidth} / ${intrinsicHeight};` : '';
+  $: mediaShellStyle =
+    !large && (!mediaActive || ad.type === 'video')
+      ? `aspect-ratio: ${videoAspectRatio || intrinsicWidth / intrinsicHeight};`
+      : '';
   $: nextMediaKey = `${ad.id}-${ad.type}-${src}-${ad.htmlPreviewUrl || ''}-${large}`;
   $: if (nextMediaKey !== mediaKey) {
     mediaKey = nextMediaKey;
     mediaActive = large;
     mediaInViewport = large;
     mediaReady = ad.type === 'html5' && !ad.htmlPreviewUrl;
+    videoHovered = false;
+    videoPosterReady = false;
+    videoPosterTime = 2;
+    videoAspectRatio = 0;
   }
 
   function resizeFrame() {
@@ -69,10 +81,81 @@
   }
 
   $: if (videoElement) {
-    if (mediaInViewport) {
+    const shouldPlay = mediaInViewport && (large || (hoverPreviewAvailable && videoHovered && videoPosterReady));
+
+    if (shouldPlay) {
       videoElement.play().catch(() => {});
     } else {
       videoElement.pause();
+    }
+  }
+
+  function prepareVideoPoster(event) {
+    const video = event.currentTarget;
+
+    if (large) {
+      markMediaReady();
+      return;
+    }
+
+    videoPosterReady = false;
+    if (video.videoWidth > 0 && video.videoHeight > 0) {
+      videoAspectRatio = video.videoWidth / video.videoHeight;
+    }
+    const duration = Number(video.duration);
+    videoPosterTime = Number.isFinite(duration) && duration > 0 ? Math.min(2, Math.max(0, duration - 0.05)) : 2;
+
+    try {
+      if (Math.abs(video.currentTime - videoPosterTime) < 0.05) {
+        videoPosterReady = true;
+        markMediaReady();
+      } else {
+        video.currentTime = videoPosterTime;
+      }
+    } catch {
+      videoPosterReady = true;
+      markMediaReady();
+    }
+  }
+
+  function handleVideoSeeked(event) {
+    if (large) return;
+
+    videoPosterReady = true;
+    markMediaReady();
+
+    if (hoverPreviewAvailable && videoHovered && mediaInViewport) {
+      event.currentTarget.play().catch(() => {});
+    }
+  }
+
+  function handleVideoPointerEnter() {
+    if (large || !hoverPreviewAvailable) return;
+
+    videoHovered = true;
+
+    if (videoElement && videoPosterReady && mediaInViewport) {
+      try {
+        videoElement.currentTime = 0;
+      } catch {
+        // Start from the current frame if this source cannot seek.
+      }
+      videoElement.play().catch(() => {});
+    }
+  }
+
+  function handleVideoPointerLeave() {
+    if (large || !hoverPreviewAvailable) return;
+
+    videoHovered = false;
+
+    if (videoElement && videoPosterReady) {
+      videoElement.pause();
+      try {
+        videoElement.currentTime = videoPosterTime;
+      } catch {
+        // Keep the last rendered frame if this source cannot seek.
+      }
     }
   }
 
@@ -118,6 +201,7 @@
   }
 
   onMount(() => {
+    hoverPreviewAvailable = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
     handleViewportResize();
     window.addEventListener('resize', handleViewportResize);
 
@@ -180,7 +264,7 @@
   {/if}
 {:else if ad.type === 'video'}
   <div
-    class="creative-media-shell"
+    class="creative-media-shell video-media-shell"
     class:is-dormant={!mediaActive && !large}
     class:is-large={large}
     class:is-ready={mediaReady}
@@ -191,18 +275,31 @@
     {#if mediaActive}
       <video
         bind:this={videoElement}
-        autoplay={mediaInViewport}
+        autoplay={large && mediaInViewport}
         loop
         muted
         playsinline
+        preload={large ? 'auto' : 'metadata'}
         disablepictureinpicture
         controlslist="nodownload nofullscreen noremoteplayback"
         aria-label={`${ad.title} ${getAdTypeLabel(ad.type)} preview`}
-        on:loadeddata={markMediaReady}
-        on:canplay={markMediaReady}
+        on:loadedmetadata={prepareVideoPoster}
+        on:loadeddata={large ? markMediaReady : undefined}
+        on:canplay={large ? markMediaReady : undefined}
+        on:seeked={handleVideoSeeked}
+        on:pointerenter={handleVideoPointerEnter}
+        on:pointerleave={handleVideoPointerLeave}
       >
         <source src={src} type="video/mp4" />
       </video>
+      {#if !large}
+        <div class="video-preview-cue" aria-hidden="true">
+          <span class="video-preview-label">
+            <span class="video-preview-play"></span>
+            Hover to preview
+          </span>
+        </div>
+      {/if}
     {/if}
     {#if mediaActive && !mediaReady}
       <div class="creative-loading-layer" aria-hidden="true">
