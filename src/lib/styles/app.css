@@ -948,6 +948,10 @@ video {
   transform: translateY(-2px);
 }
 
+.ad-card.is-preview-active {
+  transform: translateY(-2px);
+}
+
 .ad-card:has(.creative-media-shell.is-dormant) {
   background: transparent;
 }
@@ -1076,12 +1080,34 @@ video {
   border-left: 0.38rem solid currentColor;
 }
 
+.video-preview-mobile-label {
+  display: none;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .video-preview-cue {
     display: flex;
   }
 
   .creative-media-shell:hover .video-preview-cue {
+    opacity: 0;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  .video-preview-cue {
+    display: flex;
+  }
+
+  .video-preview-desktop-label {
+    display: none;
+  }
+
+  .video-preview-mobile-label {
+    display: inline;
+  }
+
+  .video-media-shell.is-mobile-preview-active .video-preview-cue {
     opacity: 0;
   }
 }

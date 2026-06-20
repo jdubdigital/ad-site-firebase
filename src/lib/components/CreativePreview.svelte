@@ -4,6 +4,7 @@
 
   export let ad;
   export let large = false;
+  export let previewActive = false;
 
   const dispatch = createEventDispatcher();
 
@@ -20,6 +21,7 @@
   let videoPosterTime = 2;
   let videoAspectRatio = 0;
   let hoverPreviewAvailable = false;
+  let mobilePreviewStarted = false;
 
   $: src = ad.mediaUrl || getCreativeFallback(ad);
   $: [creativeWidth, creativeHeight] = String(ad.size || '300x250')
@@ -47,6 +49,7 @@
     videoPosterReady = false;
     videoPosterTime = 2;
     videoAspectRatio = 0;
+    mobilePreviewStarted = false;
   }
 
   function resizeFrame() {
@@ -81,13 +84,27 @@
   }
 
   $: if (videoElement) {
-    const shouldPlay = mediaInViewport && (large || (hoverPreviewAvailable && videoHovered && videoPosterReady));
+    const shouldPlay =
+      mediaInViewport &&
+      (large ||
+        (hoverPreviewAvailable && videoHovered && videoPosterReady) ||
+        (!hoverPreviewAvailable && previewActive && videoPosterReady));
 
     if (shouldPlay) {
       videoElement.play().catch(() => {});
     } else {
       videoElement.pause();
     }
+  }
+
+  $: if (!large && previewActive && videoElement && videoPosterReady && !mobilePreviewStarted) {
+    mobilePreviewStarted = true;
+    try {
+      videoElement.currentTime = 0;
+    } catch {
+      // Start from the current frame if this source cannot seek.
+    }
+    videoElement.play().catch(() => {});
   }
 
   function prepareVideoPoster(event) {
@@ -124,7 +141,10 @@
     videoPosterReady = true;
     markMediaReady();
 
-    if (hoverPreviewAvailable && videoHovered && mediaInViewport) {
+    if (
+      mediaInViewport &&
+      ((hoverPreviewAvailable && videoHovered) || (!hoverPreviewAvailable && previewActive))
+    ) {
       event.currentTarget.play().catch(() => {});
     }
   }
@@ -268,6 +288,7 @@
     class:is-dormant={!mediaActive && !large}
     class:is-large={large}
     class:is-ready={mediaReady}
+    class:is-mobile-preview-active={!large && previewActive}
     use:observeMediaWindow
     style={mediaShellStyle}
     aria-busy={!mediaReady}
@@ -296,7 +317,8 @@
         <div class="video-preview-cue" aria-hidden="true">
           <span class="video-preview-label">
             <span class="video-preview-play"></span>
-            Hover to preview
+            <span class="video-preview-desktop-label">Hover to preview</span>
+            <span class="video-preview-mobile-label">Tap to preview</span>
           </span>
         </div>
       {/if}
