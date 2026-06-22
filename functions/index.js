@@ -6,6 +6,7 @@ const { logger } = require('firebase-functions');
 const { onRequest } = require('firebase-functions/v2/https');
 const { setGlobalOptions } = require('firebase-functions/v2/options');
 const AdmZip = require('adm-zip');
+const { bundleHtml5PrivacyAssets, privacyCsp } = require('./html5-privacy');
 
 setGlobalOptions({
   region: 'us-central1',
@@ -21,6 +22,8 @@ const bucket = getStorage().bucket();
 const html5MaxFiles = 120;
 const html5MaxFileBytes = 5 * 1024 * 1024;
 const html5MaxTotalBytes = 15 * 1024 * 1024;
+const html5PrivacyVersion = 1;
+const html5PrivacyMigrations = new Map();
 const html5AllowedExtensions = new Set([
   'css',
   'bin',
@@ -40,6 +43,7 @@ const html5AllowedExtensions = new Set([
   'svg',
   'ttf',
   'txt',
+  'wasm',
   'webm',
   'webp',
   'woff',
@@ -64,6 +68,7 @@ const html5MimeTypes = {
   svg: 'image/svg+xml',
   ttf: 'font/ttf',
   txt: 'text/plain; charset=utf-8',
+  wasm: 'application/wasm',
   webm: 'video/webm',
   webp: 'image/webp',
   woff: 'font/woff',
@@ -244,7 +249,7 @@ async function extractHtml5Archive(adId, storagePath, preferredSize = '') {
 
   const [archiveBuffer] = await sourceFile.download();
   const zip = new AdmZip(archiveBuffer);
-  const files = [];
+  let files = [];
   let totalBytes = 0;
 
   for (const entry of zip.getEntries()) {
@@ -279,6 +284,13 @@ async function extractHtml5Archive(adId, storagePath, preferredSize = '') {
   const entryPath = selectEntryPath(files.map((file) => file.path), preferredSize);
   if (!entryPath) throw httpError(400, 'The ZIP needs an index.html or another HTML entry file.');
 
+  const privacyBundle = await bundleHtml5PrivacyAssets({
+    adId,
+    files,
+    mimeTypes: html5MimeTypes
+  });
+  files = privacyBundle.files;
+
   const basePath = `html5Previews/${adId}`;
   await bucket.deleteFiles({ prefix: `${basePath}/`, force: true });
 
@@ -299,6 +311,9 @@ async function extractHtml5Archive(adId, storagePath, preferredSize = '') {
     htmlPreviewEntryPath: entryPath,
     htmlPreviewUrl: `/api/html5/${adId}/${encodePreviewPath(entryPath)}`,
     htmlPreviewFileCount: files.length,
+    htmlPreviewExternalFileCount: privacyBundle.externalFileCount,
+    htmlPreviewExternalDomains: privacyBundle.externalDomains,
+    htmlPreviewPrivacyVersion: html5PrivacyVersion,
     htmlPreviewStatus: 'ready',
     htmlPreviewPreferredSize: preferredSize || null
   };
@@ -327,7 +342,9 @@ async function handleHtml5Extraction(req, res) {
     await adRef.update({
       ...previewFields,
       htmlPreviewError: null,
+      htmlPreviewPrivacyError: null,
       htmlPreviewProcessedAt: new Date().toISOString(),
+      htmlPreviewPrivacyProcessedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     });
 
@@ -339,6 +356,46 @@ async function handleHtml5Extraction(req, res) {
       updatedAt: new Date().toISOString()
     });
     throw error;
+  }
+}
+
+async function ensureHtml5PrivacyBundle(adId, adRef, ad) {
+  if (ad.htmlPreviewPrivacyVersion === html5PrivacyVersion) return ad;
+  if (!ad.mediaStoragePath) throw httpError(503, 'This HTML5 preview needs its original ZIP to enable privacy protection.');
+
+  if (!html5PrivacyMigrations.has(adId)) {
+    const migration = (async () => {
+      const previewFields = await extractHtml5Archive(adId, ad.mediaStoragePath, ad.size || '');
+      const processedAt = new Date().toISOString();
+      await adRef.update({
+        ...previewFields,
+        htmlPreviewError: null,
+        htmlPreviewPrivacyError: null,
+        htmlPreviewProcessedAt: processedAt,
+        htmlPreviewPrivacyProcessedAt: processedAt,
+        updatedAt: processedAt
+      });
+      return {
+        ...ad,
+        ...previewFields,
+        htmlPreviewProcessedAt: processedAt,
+        htmlPreviewPrivacyProcessedAt: processedAt
+      };
+    })().finally(() => html5PrivacyMigrations.delete(adId));
+
+    html5PrivacyMigrations.set(adId, migration);
+  }
+
+  try {
+    return await html5PrivacyMigrations.get(adId);
+  } catch (error) {
+    await adRef
+      .update({
+        htmlPreviewPrivacyError: error.message || 'Privacy processing failed.',
+        updatedAt: new Date().toISOString()
+      })
+      .catch(() => {});
+    throw httpError(503, 'This HTML5 preview could not be privacy-processed.');
   }
 }
 
@@ -451,10 +508,10 @@ async function handleProfileLikes(req, res) {
 function previewContentHeaders(contentType) {
   const headers = {
     'cache-control': contentType.startsWith('text/html') ? 'no-cache' : 'public, max-age=3600',
-    'content-security-policy':
-      "default-src https: data: blob:; script-src https: 'unsafe-inline' data: blob:; style-src https: 'unsafe-inline'; img-src https: data: blob:; font-src https: data:; media-src https: data: blob:; connect-src https: data: blob:; worker-src https: blob:; model-src https: data: blob:; frame-ancestors 'self'",
+    'content-security-policy': privacyCsp,
     'access-control-allow-origin': '*',
     'cross-origin-resource-policy': 'cross-origin',
+    'referrer-policy': 'no-referrer',
     'x-content-type-options': 'nosniff'
   };
 
@@ -479,6 +536,65 @@ function html5PreviewBootstrap() {
   var bodyScrollAccessorsInstalled = false;
   var lastViewportWidth = 0;
   var lastViewportHeight = 0;
+
+  function isExternalNetworkUrl(value) {
+    if (!value || typeof value !== 'string') return false;
+    if (/^(?:data:|blob:|about:|#)/i.test(value)) return false;
+    try {
+      return new URL(value, window.location.href).origin !== window.location.origin;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function installPrivacyGuards() {
+    var nativeFetch = window.fetch;
+    if (typeof nativeFetch === 'function') {
+      window.fetch = function (input) {
+        var url = typeof input === 'string' ? input : input && input.url;
+        if (isExternalNetworkUrl(url)) return Promise.reject(new TypeError('External network requests are disabled.'));
+        return nativeFetch.apply(this, arguments);
+      };
+    }
+
+    if (window.XMLHttpRequest && window.XMLHttpRequest.prototype) {
+      var nativeOpen = window.XMLHttpRequest.prototype.open;
+      window.XMLHttpRequest.prototype.open = function (_method, url) {
+        if (isExternalNetworkUrl(url)) throw new TypeError('External network requests are disabled.');
+        return nativeOpen.apply(this, arguments);
+      };
+    }
+
+    if (navigator.sendBeacon) {
+      try {
+        navigator.sendBeacon = function () {
+          return false;
+        };
+      } catch (error) {}
+    }
+
+    window.open = function () {
+      return null;
+    };
+
+    document.addEventListener(
+      'click',
+      function (event) {
+        var target = event.target && event.target.closest ? event.target.closest('a[href], area[href]') : null;
+        if (target) event.preventDefault();
+      },
+      true
+    );
+    document.addEventListener(
+      'submit',
+      function (event) {
+        event.preventDefault();
+      },
+      true
+    );
+  }
+
+  installPrivacyGuards();
 
   function serialize(value, depth) {
     if (depth > 2) return '[Object]';
@@ -757,6 +873,7 @@ function html5PreviewBootstrap() {
   window.__AD_ARCHIVE_RUNTIME = window.__AD_ARCHIVE_RUNTIME || runtimeState;
   installScrollAccessors();
   window.addEventListener('message', function (event) {
+    if (event.source !== window.parent) return;
     var data = event.data || {};
     if (data.type !== RUNTIME_UPDATE) return;
 
@@ -1196,13 +1313,15 @@ async function handleHtml5Preview(path, res) {
   const requestedPath = normalizeZipPath(decodeURIComponent(match[2]));
   if (!adId || !requestedPath) throw httpError(400, 'Invalid HTML5 preview path.');
 
-  const snapshot = await db.collection('ads').doc(adId).get();
+  const adRef = db.collection('ads').doc(adId);
+  const snapshot = await adRef.get();
   if (!snapshot.exists) throw httpError(404, 'Ad not found.');
 
-  const ad = snapshot.data();
+  let ad = snapshot.data();
   if (ad.type !== 'html5' || ad.htmlPreviewStatus !== 'ready' || !ad.htmlPreviewBasePath) {
     throw httpError(404, 'HTML5 preview is not ready.');
   }
+  ad = await ensureHtml5PrivacyBundle(adId, adRef, ad);
 
   const file = bucket.file(`${ad.htmlPreviewBasePath}/${requestedPath}`);
   const [exists] = await file.exists();

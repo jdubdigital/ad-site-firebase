@@ -274,7 +274,7 @@
       type: analysis.type,
       isResponsiveCreative: isProgrammatic ? Boolean(programmaticResponsive) : false,
       showcaseSizes: isProgrammatic ? selectedSizes : [sizeValue],
-      portfolioFeedEnabled: existingAsset.portfolioFeedEnabled !== false
+      portfolioFeedEnabled: existingAsset.portfolioFeedEnabled === true
     };
   }
 

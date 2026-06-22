@@ -193,7 +193,7 @@
       mediaFileName: cleanSubmittedValue(pendingFileName),
       notes: cleanSubmittedValue(notes),
       type,
-      portfolioFeedEnabled: editingAd?.portfolioFeedEnabled !== false
+      portfolioFeedEnabled: editingAd?.portfolioFeedEnabled === true
     };
 
     function handleSubmitProgress(event) {

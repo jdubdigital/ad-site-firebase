@@ -93,7 +93,7 @@
   $: slug = $page.params.slug;
   $: if (browser && slug) loadPublicUser(slug);
   $: portfolioAds = $ads
-    .filter((ad) => getAdUserSlug(ad) === slug && ad.portfolioFeedEnabled !== false)
+    .filter((ad) => getAdUserSlug(ad) === slug && ad.portfolioFeedEnabled === true)
     .sort((a, b) => getAdChronology(b) - getAdChronology(a));
   $: adUser = portfolioAds[0]
     ? {

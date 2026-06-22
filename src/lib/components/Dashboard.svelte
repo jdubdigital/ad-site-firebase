@@ -109,7 +109,7 @@
       })
     : '';
   $: myAds = $ads.filter((ad) => getAdUserSlug(ad) === currentProfile.userSlug);
-  $: portfolioAds = myAds.filter((ad) => ad.portfolioFeedEnabled !== false);
+  $: portfolioAds = myAds.filter((ad) => ad.portfolioFeedEnabled === true);
   $: likedAds = $ads.filter((ad) => ad.liked).sort((a, b) => getAdChronology(b) - getAdChronology(a));
   async function loadFavoriteUserDetails(slugs) {
     const request = ++favoriteUserDetailsRequest;
@@ -257,7 +257,7 @@
       await setAdPortfolioFeed(ad.id, included);
       portfolioStatus = included ? `"${ad.title}" added to the portfolio feed.` : `"${ad.title}" removed from the portfolio feed.`;
     } catch (error) {
-      checkbox.checked = ad.portfolioFeedEnabled !== false;
+      checkbox.checked = ad.portfolioFeedEnabled === true;
       portfolioStatus = error?.message || 'Unable to update the portfolio feed.';
     } finally {
       updatingPortfolioAdIds = new Set([...updatingPortfolioAdIds].filter((id) => id !== ad.id));
@@ -534,7 +534,7 @@
                 <label class="portfolio-feed-toggle">
                   <input
                     type="checkbox"
-                    checked={ad.portfolioFeedEnabled !== false}
+                    checked={ad.portfolioFeedEnabled === true}
                     disabled={updatingPortfolioAdIds.has(ad.id)}
                     on:change={(event) => handlePortfolioFeedChange(ad, event)}
                   />
