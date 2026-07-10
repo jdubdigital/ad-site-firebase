@@ -46,41 +46,51 @@
     </div>
 
     <div class="hero-showcase" aria-hidden="true">
-      <div class="hero-showcase-grid"></div>
-
-      <article class="hero-creative hero-creative-main">
-        <div class="hero-creative-meta">
-          <span>300 × 250</span>
-          <span>Display</span>
+      <div class="hero-showcase-panel">
+        <div class="hero-showcase-toolbar">
+          <div class="hero-window-dots"><span></span><span></span><span></span></div>
+          <span>Creative board</span>
+          <span class="hero-showcase-count">04 formats</span>
         </div>
-        <div class="hero-creative-main-copy">
-          <span class="hero-mini-kicker">GOOD ADS</span>
-          <strong>Move<br />people.</strong>
-          <span class="hero-faux-cta">See the work →</span>
-        </div>
-        <div class="hero-creative-shape"></div>
-      </article>
 
-      <article class="hero-creative hero-creative-tall">
-        <div class="hero-creative-meta">
-          <span>160 × 600</span>
-          <span>GIF</span>
-        </div>
-        <strong>A tall<br />story.</strong>
-        <div class="hero-tall-dots"><span></span><span></span><span></span></div>
-      </article>
+        <div class="hero-showcase-layout">
+          <article class="hero-creative hero-creative-main">
+            <div class="hero-creative-meta">
+              <span>300 × 250</span>
+              <span>HTML5</span>
+            </div>
+            <div class="hero-creative-main-copy">
+              <span class="hero-mini-kicker">GOOD ADS</span>
+              <strong>Move<br />people.</strong>
+              <span class="hero-faux-cta">See the work →</span>
+            </div>
+            <div class="hero-creative-shape"></div>
+          </article>
 
-      <article class="hero-creative hero-creative-banner">
-        <div>
-          <span>728 × 90 · VIDEO</span>
-          <strong>Make it impossible to ignore.</strong>
-        </div>
-        <span class="hero-banner-play">▶</span>
-      </article>
+          <div class="hero-showcase-side">
+            <article class="hero-creative hero-creative-banner">
+              <div>
+                <span>728 × 90 · VIDEO</span>
+                <strong>Impossible to ignore.</strong>
+              </div>
+              <span class="hero-banner-play">▶</span>
+            </article>
 
-      <div class="hero-live-badge">
-        <span></span>
-        Live creative
+            <article class="hero-creative hero-creative-tall">
+              <div class="hero-creative-meta">
+                <span>160 × 600</span>
+                <span>GIF</span>
+              </div>
+              <strong>A tall<br />story.</strong>
+              <div class="hero-tall-dots"><span></span><span></span><span></span></div>
+            </article>
+
+            <div class="hero-live-badge">
+              <span></span>
+              Live creative
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
